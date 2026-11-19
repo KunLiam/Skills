@@ -41,7 +41,14 @@
       s10: "assets_px/px_wind_s10_aurora_breakthrough.png",
       s11: "assets_px/px_wind_s11_cloud_stairway_dawn.png",
       s12: "assets_px/px_wind_s12_sky_flower_meadow.png",
-      s13: "assets_px/px_wind_s13_grand_sea_of_wind.png"
+      s13: "assets_px/px_wind_s13_grand_sea_of_wind.png",
+      s14: "assets_px/px_wind_s14_paper_plane_valley.png",
+      s15: "assets_px/px_wind_s15_starlight_train.png",
+      s16: "assets_px/px_wind_s16_rainy_lantern_bridge.png",
+      s17: "assets_px/px_wind_s17_floating_lighthouse.png",
+      s18: "assets_px/px_wind_s18_kaleidoscope_sky.png",
+      s19: "assets_px/px_wind_s19_whale_cloud_sanctuary.png",
+      s20: "assets_px/px_wind_s20_harbor_starlight_pier.png"
     };
     const IMGS = {};
     function loadAll() {
@@ -334,8 +341,8 @@
 
     // ── Evolving Global Pixel RPG HUD + Full-Song Journey Mini-Map ──
     function drawGameHUD(t) {
-      if (t < 15.7 || t > 304.2) return;
-      const a = easeOut(clamp((t - 15.7) / 0.5, 0, 1)) * clamp((304.2 - t) / 0.8, 0, 1);
+      if (t < 15.7 || t > 286.2) return;
+      const a = easeOut(clamp((t - 15.7) / 0.5, 0, 1)) * clamp((286.2 - t) / 0.8, 0, 1);
       ctx.save();
       ctx.globalAlpha = a;
 
@@ -353,39 +360,63 @@
         lv = "LV.04"; stageTag = "STAGE 03 · 迟钝伸手";
         windKmh = Math.round(lerp(56, 0, easeOut((t - 39.36) / 3.2)));
         goal = windKmh > 2 ? "QTE：长按留住风之灵" : "风不屑被谁所有……";
-      } else if (t < 77.76) {
-        lv = "LV.08"; stageTag = "STAGE 04 · 风车山丘";
+      } else if (t < 64.5) {
+        lv = "LV.06"; stageTag = "STAGE 04 · 风车山丘";
         goal = "点亮风之音符灯 · 追寻歌声"; windKmh = 36;
-      } else if (t < 102.0) {
-        lv = "LV.12"; stageTag = "STAGE 05 · 碧海踏风";
+      } else if (t < 77.76) {
+        lv = "LV.09"; stageTag = "STAGE 05 · 纸飞机峡谷";
+        goal = "放飞纸飞机 · 穿越金色云峡"; windKmh = 48;
+      } else if (t < 89.88) {
+        lv = "LV.12"; stageTag = "STAGE 06 · 碧海踏风";
         goal = "乘风破浪 · 守护小小风车"; windKmh = 68;
+      } else if (t < 102.0) {
+        lv = "LV.15"; stageTag = "STAGE 07 · 星光云海列车";
+        goal = "登上云端列车 · 奔赴自由"; windKmh = 76;
       } else if (t < 115.49) {
-        lv = "LV.15"; stageTag = "REST · 浮空岛营火";
+        lv = "LV.16"; stageTag = "REST · 浮空岛营火";
         goal = "CHAPTER II 加载中……"; windKmh = 12;
-      } else if (t < 140.15) {
-        lv = "LV.22"; stageTag = "STAGE 06 · 宽广世界迷途";
-        purity = Math.round(lerp(95, 42, ease((t - 115.49) / 24.6)));
+      } else if (t < 127.64) {
+        lv = "LV.20"; stageTag = "STAGE 08 · 宽广世界迷途";
+        purity = Math.round(lerp(95, 52, ease((t - 115.49) / 12.15)));
         goal = "穿越人群孤立 · 找回纯粹轮廓"; windKmh = 18;
-      } else if (t < 166.15) {
-        lv = "LV.25"; stageTag = "STAGE 07 · 旅人的行囊";
-        purity = Math.round(lerp(42, 86, ease(clamp((t - 148) / 14, 0, 1))));
+      } else if (t < 140.15) {
+        lv = "LV.23"; stageTag = "STAGE 09 · 雨夜灯笼桥";
+        purity = Math.round(lerp(52, 68, ease((t - 127.64) / 12.51)));
+        goal = "点亮灯笼 · 倾听风的回声"; windKmh = 26;
+      } else if (t < 152.63) {
+        lv = "LV.25"; stageTag = "STAGE 10 · 旅人的行囊";
+        purity = Math.round(lerp(68, 86, ease((t - 140.15) / 12.48)));
         goal = "打开背包 · 重拾年少风车"; windKmh = 20;
-      } else if (t < 192.0) {
-        lv = "LV.32"; stageTag = "STAGE 08 · 极光破云";
+      } else if (t < 166.15) {
+        lv = "LV.29"; stageTag = "STAGE 11 · 云端星光灯塔";
+        purity = Math.round(lerp(86, 98, ease((t - 152.63) / 13.52)));
+        goal = "灯塔信标锁定 · 走散也会重逢"; windKmh = 44;
+      } else if (t < 178.51) {
+        lv = "LV.33"; stageTag = "STAGE 12 · 极光破云";
         purity = 100; windKmh = 82;
-        goal = "解除执念 · 学会如你般自由";
-      } else if (t < 216.56) {
-        lv = "LV.38"; stageTag = "BRIDGE · 云端天梯";
+        goal = "解除执念 · 冲破极光云海";
+      } else if (t < 192.0) {
+        lv = "LV.37"; stageTag = "STAGE 13 · 星河万花筒";
+        purity = 100; windKmh = 92;
+        goal = "穿越星轨环 · 探向无尽辽阔";
+      } else if (t < 204.0) {
+        lv = "LV.40"; stageTag = "BRIDGE · 云端天梯";
         goal = "拾级而上 · 重逢「小小孩」"; windKmh = 30;
+      } else if (t < 216.56) {
+        lv = "LV.43"; stageTag = "EX-STAGE · 云鲸圣殿";
+        goal = "与光之云鲸共游天际"; windKmh = 58;
       } else if (t < 243.37) {
-        lv = "LV.45"; stageTag = "STAGE 09 · 花海欢唱";
+        lv = "LV.46"; stageTag = "STAGE 14 · 花海欢唱";
         goal = "与小小孩同行 · 欢唱呼唤微风"; windKmh = 54;
+      } else if (t < 255.88) {
+        lv = "LV.49"; stageTag = "STAGE 15 · 翱翔风之海";
+        goal = "如你般自由 · 纵览风之海"; windKmh = 96;
       } else if (t < 272.0) {
-        lv = "LV.MAX"; stageTag = "FINAL · 找到风的海";
-        goal = "🏆 TRUE ENDING · 你本身就是风的海"; windKmh = 99;
+        lv = "LV.MAX"; stageTag = "FINAL · 星河童话港口";
+        goal = "🏆 TRUE ENDING · 停泊在这港口"; windKmh = 88;
       } else {
         lv = "LV.MAX"; stageTag = "OUTRO · 回归日落栈道";
-        goal = "放下风车 · 拥抱自由微风"; windKmh = 16;
+        goal = "放下执念 · 拥抱自由微风"; windKmh = 16;
       }
 
       // Top-left Player Status Card
@@ -754,14 +785,13 @@
       ctx.restore();
     }
 
-    // STAGE 04 (51.74 – 77.76): FIRST CHORUS — Windmill Hill · Lighting Musical Lanterns!
+    // STAGE 04 (51.74 – 64.50): FIRST CHORUS — Windmill Hill · Lighting Musical Lanterns!
     function renderStage4(t, alpha) {
-      const lt = t - 51.74, p = clamp(lt / 26.02, 0, 1);
+      const lt = t - 51.74, p = clamp(lt / 12.76, 0, 1);
       ctx.save(); ctx.globalAlpha = alpha;
       drawBgPlate(IMGS.s5, lerp(1.03, 1.12, ease(p)), Math.round(lerp(30, -34, p)), 0, 0.14);
       drawPixelMotes(t, 60, 110, 0.9);
 
-      // Traveler jogging across the golden windmill ridge lighting 4 musical lanterns!
       const pxPos = Math.round(lerp(280, 1560, ease(p)));
       const pyPos = Math.round(770 - Math.sin(p * Math.PI) * 55);
 
@@ -803,16 +833,52 @@
       drawEmoteBubble(pxPos - 52, pyPos - 180, "♪", "#ffd878", alpha * 0.9);
       drawPixelWindSpirit(Math.min(W - 140, pxPos + 340), pyPos - 140 + Math.sin(t * 4) * 32, t, 0, alpha);
 
-      if (lt >= 1.2 && lt <= 7.0) {
+      if (lt >= 0.8 && lt <= 6.2) {
         drawToastBanner(190, "🎵 支线解锁：风吹醒沉睡那首歌", "点亮山脊音符灯 · 循着歌声去往风的海", "#ffd878", "#ffd878",
-          alpha * easeOut(clamp((lt - 1.2) / 0.4, 0, 1)) * clamp((7.0 - lt) / 0.5, 0, 1));
+          alpha * easeOut(clamp((lt - 0.8) / 0.4, 0, 1)) * clamp((6.2 - lt) / 0.5, 0, 1));
       }
       ctx.restore();
     }
 
-    // STAGE 05 (77.76 – 102.00): HIGH CHORUS 1 — Sky-Ocean Wave Surfing + Relic Combo!
+    // STAGE 05 (64.50 – 77.76): NEW — Paper Plane Valley · Gliding Through Cloud Canyon!
+    function renderStage4b(t, alpha) {
+      const lt = t - 64.5, p = clamp(lt / 13.26, 0, 1);
+      ctx.save(); ctx.globalAlpha = alpha;
+      drawBgPlate(IMGS.s14, lerp(1.03, 1.13, ease(p)), Math.round(lerp(36, -38, p)), 0, 0.12);
+      drawPixelMotes(t, 72, 160, 0.92);
+
+      // Flying pixel paper planes gliding across the canyon updraft
+      for (let i = 0; i < 6; i++) {
+        const px = Math.round(((i * 340 + lt * (240 + i * 28)) % (W + 260)) - 130);
+        const py = Math.round(280 + i * 86 + Math.sin(t * 2.8 + i) * 26);
+        ctx.fillStyle = "rgba(255, 250, 240, 0.95)";
+        ctx.beginPath();
+        ctx.moveTo(px + 26, py);
+        ctx.lineTo(px - 18, py - 12);
+        ctx.lineTo(px - 10, py + 2);
+        ctx.lineTo(px - 18, py + 12);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = "rgba(126, 244, 255, 0.55)";
+        ctx.fillRect(px - 42, py - 1, 24, 3);
+      }
+
+      const pxPos = Math.round(lerp(300, 1400, ease(p)));
+      const pyPos = Math.round(620 + Math.sin(t * 3.2) * 42);
+      drawPixelCloudPlatform(pxPos, pyPos + 10, 175, true);
+      drawPixelPlayer(pxPos, pyPos, 6.6, t, "glide", alpha);
+      drawPixelWindSpirit(Math.min(W - 140, pxPos + 350), pyPos - 90 + Math.sin(t * 4.2) * 30, t, 0, alpha);
+
+      if (lt >= 1.2 && lt <= 10.5) {
+        const ta = easeOut(clamp((lt - 1.2) / 0.45, 0, 1)) * clamp((10.5 - lt) / 0.5, 0, 1);
+        drawToastBanner(192, "✈ 放飞风之信笺 · 纸飞机峡谷", "把没说出口的心事折成纸飞机，交给云端气流", "#8cf8ff", "#ffd878", alpha * ta);
+      }
+      drawParallaxForegroundClouds(t, 210, "rgba(255, 240, 200, 0.30)", alpha);
+      ctx.restore();
+    }
+
+    // STAGE 06 (77.76 – 89.88): HIGH CHORUS 1 — Sky-Ocean Wave Surfing + Relic Combo!
     function renderStage5(t, alpha) {
-      const lt = t - 77.76, p = clamp(lt / 24.24, 0, 1);
+      const lt = t - 77.76, p = clamp(lt / 12.12, 0, 1);
       ctx.save(); ctx.globalAlpha = alpha;
       drawBgPlate(IMGS.s6, lerp(1.02, 1.14, ease(p)), Math.round(lerp(40, -45, p)), 0, 0.10);
       drawPixelMotes(t, 84, 240, 0.95);
@@ -820,15 +886,13 @@
       const pxPos = Math.round(lerp(360, 1240, ease(p)));
       const pyPos = Math.round(620 + Math.sin(t * 3.8) * 48);
 
-      // Surfing afterimages + golden cloud surfboard!
       drawPixelPlayer(pxPos - 58, pyPos + 6, 6.8, t - 0.14, "glide", alpha * 0.22, "#7ef4ff");
       drawPixelPlayer(pxPos - 28, pyPos + 3, 6.8, t - 0.07, "glide", alpha * 0.44, "#9cf8ff");
       drawPixelCloudPlatform(pxPos, pyPos + 10, 180, true);
       drawPixelPlayer(pxPos, pyPos, 6.8, t, "glide", alpha);
       drawPixelWindSpirit(pxPos + 380, pyPos - 90 + Math.sin(t * 4.5) * 38, t, 0, alpha);
 
-      // High-contrast Chorus Relic Cards (Integer snapped, zero jitter!)
-      const combo = Math.min(12, 1 + Math.floor(lt / 1.8));
+      const combo = Math.min(12, 1 + Math.floor(lt / 1.0));
       rrect(W - 310, 152, 270, 68, 10);
       ctx.fillStyle = "rgba(10, 20, 38, 0.90)"; ctx.fill();
       ctx.strokeStyle = "#ffd878"; ctx.lineWidth = 2; ctx.stroke();
@@ -836,18 +900,39 @@
       ctx.font = '800 26px "DIN Alternate", "PingFang SC", sans-serif'; ctx.fillStyle = "#ffd878";
       ctx.fillText(`自由共鸣 COMBO ×${combo}`, W - 175, 186);
 
-      const relics = [
-        { s: 1.5,  e: 8.5,  t1: "✨ 珍藏记忆：[ 最纯净的轮廓 ]", t2: "握住小小风车和放肆的梦" },
-        { s: 9.5,  e: 16.5, t1: "🌊 碧海踏浪 · 拥抱温柔",       t2: "平凡中寻得我拥抱你的温柔" },
-        { s: 17.5, e: 23.5, t1: "💨 触发思辨：你该有多自由？",   t2: "而你却有保留地遇见我 · 不屑被谁所有" }
-      ];
-      for (const rl of relics) {
-        if (lt >= rl.s && lt <= rl.e) {
-          const ra = easeOut(clamp((lt - rl.s) / 0.45, 0, 1)) * clamp((rl.e - lt) / 0.5, 0, 1);
-          drawToastBanner(192, rl.t1, rl.t2, "#8cf8ff", "#8cf8ff", alpha * ra);
-        }
+      if (lt >= 1.2 && lt <= 10.8) {
+        const ra = easeOut(clamp((lt - 1.2) / 0.45, 0, 1)) * clamp((10.8 - lt) / 0.5, 0, 1);
+        drawToastBanner(192, "✨ 珍藏记忆：[ 最纯净的轮廓 ]", "握住小小风车和放肆的梦 · 秘密从不会对谁泄露", "#8cf8ff", "#8cf8ff", alpha * ra);
       }
       drawParallaxForegroundClouds(t, 260, "rgba(140, 244, 255, 0.34)", alpha);
+      ctx.restore();
+    }
+
+    // STAGE 07 (89.88 – 102.00): NEW — Starlight Cloud-Sea Train!
+    function renderStage5b(t, alpha) {
+      const lt = t - 89.88, p = clamp(lt / 12.12, 0, 1);
+      ctx.save(); ctx.globalAlpha = alpha;
+      drawBgPlate(IMGS.s15, lerp(1.03, 1.12, ease(p)), Math.round(lerp(32, -36, p)), 0, 0.14);
+      drawPixelMotes(t, 68, 140, 0.9);
+
+      // Glowing pixel cloud-train car gliding across the horizon track
+      const tx = Math.round(lerp(240, 1280, ease(p)));
+      const ty = 742;
+      rrect(tx - 150, ty - 72, 300, 74, 10);
+      ctx.fillStyle = "rgba(18, 28, 52, 0.92)"; ctx.fill();
+      ctx.lineWidth = 2.5; ctx.strokeStyle = "#ffd878"; ctx.stroke();
+      for (let w = 0; w < 4; w++) {
+        ctx.fillStyle = "rgba(255, 224, 146, 0.85)";
+        ctx.fillRect(tx - 122 + w * 66, ty - 54, 46, 30);
+      }
+      // Traveler riding on the open observation deck with wind spirit ahead!
+      drawPixelPlayer(tx + 96, ty - 74, 6.4, t, "idle", alpha);
+      drawPixelWindSpirit(Math.min(W - 140, tx + 340), ty - 165 + Math.sin(t * 3.8) * 28, t, 0, alpha);
+
+      if (lt >= 1.2 && lt <= 10.8) {
+        const ra = easeOut(clamp((lt - 1.2) / 0.45, 0, 1)) * clamp((10.8 - lt) / 0.5, 0, 1);
+        drawToastBanner(192, "🚂 云海星光列车 · 奔赴自由", "平凡中寻得我，拥抱你的温柔 · 不屑被谁所有", "#ffd878", "#8cf8ff", alpha * ra);
+      }
       ctx.restore();
     }
 
@@ -885,13 +970,12 @@
     // ACT II (115.49 – 216.56)
     // ════════════════════════════════════════════════════════════════
 
-    // STAGE 06 (115.49 – 140.15): VERSE 2 — Vast Misty City Overpass · Sprinting Past Adult Obstacles!
+    // STAGE 08 (115.49 – 127.64): VERSE 2 — Vast Misty City Overpass · Sprinting Past Adult Obstacles!
     function renderStage6(t, alpha) {
-      const lt = t - 115.49, p = clamp(lt / 24.66, 0, 1);
+      const lt = t - 115.49, p = clamp(lt / 12.15, 0, 1);
       ctx.save(); ctx.globalAlpha = alpha;
       drawBgPlate(IMGS.s8, lerp(1.03, 1.10, ease(p)), Math.round(lerp(24, -28, p)), 0, 0.22);
 
-      // Gentle slanted pixel rain
       ctx.save(); ctx.globalAlpha = alpha * 0.35; ctx.fillStyle = "#9cb8e0";
       for (let i = 0; i < 48; i++) {
         const rx = Math.round(((rnd(i * 19.7) * W - t * 180) % W + W) % W);
@@ -903,11 +987,9 @@
       const pxPos = Math.round(lerp(360, 1180, ease(p)));
       const pyPos = 785;
 
-      // Crisp slow-approaching obstacle cards (Integer coordinates, ZERO jitter!)
       const obs = [
-        { ap: 117.0, hit: 121.5, y: 540, title: "人群孤立 · DEBUFF", sub: "宽广世界里慌张奔走" },
-        { ap: 123.0, hit: 127.5, y: 500, title: "世俗喧嚣 · 迷雾",   sub: "听不见风来的方向" },
-        { ap: 129.0, hit: 133.5, y: 540, title: "失落的线索",        sub: "纯真度持续衰减 ↓" }
+        { ap: 116.5, hit: 121.0, y: 530, title: "人群孤立 · DEBUFF", sub: "宽广世界里慌张奔走" },
+        { ap: 121.8, hit: 126.4, y: 500, title: "世俗喧嚣 · 迷雾",   sub: "终究要登上哪座山峰？" }
       ];
       for (const ob of obs) {
         if (t >= ob.ap && t < ob.hit) {
@@ -928,19 +1010,59 @@
       }
 
       drawPixelPlayer(pxPos, pyPos, 6.8, t, "run", alpha);
-      if (lt > 4 && lt < 22) drawEmoteBubble(pxPos - 54, pyPos - 186, "?", "#ff9eb5", alpha * 0.9);
+      if (lt > 2 && lt < 11) drawEmoteBubble(pxPos - 54, pyPos - 186, "?", "#ff9eb5", alpha * 0.9);
       ctx.restore();
     }
 
-    // STAGE 07 (140.15 – 166.15): PRE-CHORUS 2 — Moonlit Attic & RPG Memory Backpack Easter Egg!
+    // STAGE 09 (127.64 – 140.15): NEW — Rainy Lantern Bridge · Echo Ripples!
+    function renderStage6b(t, alpha) {
+      const lt = t - 127.64, p = clamp(lt / 12.51, 0, 1);
+      ctx.save(); ctx.globalAlpha = alpha;
+      drawBgPlate(IMGS.s16, lerp(1.03, 1.11, ease(p)), Math.round(lerp(28, -32, p)), 0, 0.16);
+
+      // Gentle glowing rain streaks
+      ctx.save(); ctx.globalAlpha = alpha * 0.30; ctx.fillStyle = "#a8d8ff";
+      for (let i = 0; i < 36; i++) {
+        const rx = Math.round(((rnd(i * 13.1) * W - t * 140) % W + W) % W);
+        const ry = Math.round(((rnd(i * 5.7) * H + t * 440) % H + H) % H);
+        ctx.fillRect(rx, ry, 2, 16);
+      }
+      ctx.restore();
+
+      const pxPos = Math.round(lerp(320, 1420, ease(p)));
+      const pyPos = 780;
+
+      // Golden echo rings pulsing as the player runs across the lantern bridge!
+      for (let i = 0; i < 3; i++) {
+        const u = ((lt * 0.6 + i * 0.33) % 1 + 1) % 1;
+        ctx.save();
+        ctx.globalAlpha = alpha * (1 - u) * 0.65;
+        ctx.strokeStyle = i % 2 === 0 ? "#ffd878" : "#8cf8ff";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(pxPos, pyPos - 85, 36 + u * 230, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      drawPixelPlayer(pxPos, pyPos, 6.8, t, "run", alpha);
+      drawEmoteBubble(pxPos - 52, pyPos - 182, "!", "#ffd878", alpha * 0.92);
+
+      if (lt >= 1.0 && lt <= 11.2) {
+        const ra = easeOut(clamp((lt - 1.0) / 0.45, 0, 1)) * clamp((11.2 - lt) / 0.5, 0, 1);
+        drawToastBanner(192, "🏮 雨夜灯笼桥 · 风的回声", "晴雨日升和月落，你经过必有回声 · 起风时候记得再次呼喊我", "#ffd878", "#8cf8ff", alpha * ra);
+      }
+      ctx.restore();
+    }
+
+    // STAGE 10 (140.15 – 152.63): PRE-CHORUS 2 — Moonlit Attic & RPG Memory Backpack Easter Egg!
     function renderStage7(t, alpha) {
-      const lt = t - 140.15, p = clamp(lt / 26.0, 0, 1);
+      const lt = t - 140.15, p = clamp(lt / 12.48, 0, 1);
       ctx.save(); ctx.globalAlpha = alpha;
       drawBgPlate(IMGS.s9, lerp(1.06, 1.01, ease(p)), Math.round(lerp(-10, 12, p)), 0, 0.24);
       drawPixelMotes(t, 42, 26, 0.8);
 
-      // 6-Slot RPG Backpack Card (Tourbillon-level emotional Easter Egg!)
-      const ba = easeOut(clamp(lt / 0.7, 0, 1)) * clamp((25.2 - lt) / 0.7, 0, 1);
+      const ba = easeOut(clamp(lt / 0.65, 0, 1)) * clamp((12.0 - lt) / 0.65, 0, 1);
       const bx = 260, by = 188, bw = 820, bh = 540;
       ctx.save(); ctx.globalAlpha = alpha * ba;
       rrect(bx, by, bw, bh, 14);
@@ -957,13 +1079,13 @@
         { name: "🎫 褪色的车票", st: "已过期", col: "#8c9ab8", glow: false },
         { name: "🌧 沉默的晚风", st: "已积灰", col: "#8c9ab8", glow: false },
         { name: "🚇 拥挤的地铁", st: "每日重复", col: "#8c9ab8", glow: false },
-        { name: "🌀 年少·小小风车", st: lt > 10 ? "✨ 正在发光旋转！" : "依然在转", col: "#ffd878", glow: true }
+        { name: "🌀 年少·小小风车", st: lt > 5.0 ? "✨ 正在发光旋转！" : "依然在转", col: "#ffd878", glow: true }
       ];
       for (let i = 0; i < slots.length; i++) {
         const sl = slots[i];
         const sx = bx + 32 + (i % 3) * 256, sy = by + 92 + Math.floor(i / 3) * 142;
         rrect(sx, sy, 236, 120, 10);
-        ctx.fillStyle = sl.glow && lt > 10 ? "rgba(255, 216, 120, 0.20)" : "rgba(22, 30, 52, 0.90)";
+        ctx.fillStyle = sl.glow && lt > 5.0 ? "rgba(255, 216, 120, 0.20)" : "rgba(22, 30, 52, 0.90)";
         ctx.fill();
         ctx.lineWidth = sl.glow ? 2.5 : 1.5;
         ctx.strokeStyle = sl.glow ? "#ffd878" : "rgba(255,255,255,0.18)";
@@ -975,7 +1097,6 @@
         ctx.fillText(sl.st, sx + 118, sy + 84);
       }
 
-      // Bottom emotional caption inside backpack
       rrect(bx + 32, by + 394, bw - 64, 114, 10);
       ctx.fillStyle = "rgba(255, 216, 120, 0.10)"; ctx.fill();
       ctx.strokeStyle = "rgba(255, 216, 120, 0.45)"; ctx.lineWidth = 1.5; ctx.stroke();
@@ -986,15 +1107,48 @@
       ctx.fillText("走了那么远的路，还好口袋里还留着这阵风。", bx + 54, by + 474);
       ctx.restore();
 
-      // Traveler standing by the right window, lighting up the pinwheel!
       drawPixelPlayer(1380, 770, 7.2, t, "idle", alpha);
-      if (lt > 10) drawEmoteBubble(1324, 578, "!", "#ffd878", alpha * easeOut(clamp((lt - 10) / 0.5, 0, 1)));
+      if (lt > 5.0) drawEmoteBubble(1324, 578, "!", "#ffd878", alpha * easeOut(clamp((lt - 5.0) / 0.5, 0, 1)));
       ctx.restore();
     }
 
-    // STAGE 08 (166.15 – 192.00): HIGH CHORUS 2 — Aurora Breakthrough · Unlocking Freedom Skill!
+    // STAGE 11 (152.63 – 166.15): NEW — Floating Lighthouse · Beacon Lock-On!
+    function renderStage7b(t, alpha) {
+      const lt = t - 152.63, p = clamp(lt / 13.52, 0, 1);
+      ctx.save(); ctx.globalAlpha = alpha;
+      drawBgPlate(IMGS.s17, lerp(1.04, 1.12, ease(p)), Math.round(lerp(-24, 28, p)), 0, 0.14);
+      drawPixelMotes(t, 64, 80, 0.9);
+
+      // Sweeping golden lighthouse beam
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.22;
+      const beamAngle = Math.sin(t * 0.9) * 0.32;
+      ctx.translate(960, 420);
+      ctx.rotate(beamAngle);
+      const grad = ctx.createLinearGradient(0, 0, 820, 0);
+      grad.addColorStop(0, "rgba(255, 224, 140, 0.9)");
+      grad.addColorStop(1, "rgba(255, 224, 140, 0)");
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(0, 0); ctx.lineTo(820, -180); ctx.lineTo(820, 180); ctx.closePath(); ctx.fill();
+      ctx.restore();
+
+      const pxPos = Math.round(lerp(420, 1080, ease(p)));
+      const pyPos = 740;
+      drawPixelCloudPlatform(pxPos, pyPos + 10, 170, true);
+      drawPixelPlayer(pxPos, pyPos, 6.6, t, "run", alpha);
+      drawPixelWindSpirit(Math.min(W - 180, pxPos + 320), pyPos - 140 + Math.sin(t * 3.5) * 26, t, 0, alpha);
+
+      if (lt >= 1.2 && lt <= 12.2) {
+        const ra = easeOut(clamp((lt - 1.2) / 0.45, 0, 1)) * clamp((12.2 - lt) / 0.5, 0, 1);
+        drawToastBanner(192, "🔦 云端灯塔 · 信标锁定", "在哪里走散，你都会找到我 · 循着星光重新出发", "#ffd878", "#8cf8ff", alpha * ra);
+      }
+      ctx.restore();
+    }
+
+    // STAGE 12 (166.15 – 178.51): HIGH CHORUS 2 — Aurora Breakthrough · Unlocking Freedom Skill!
     function renderStage8(t, alpha) {
-      const lt = t - 166.15, p = clamp(lt / 25.85, 0, 1);
+      const lt = t - 166.15, p = clamp(lt / 12.36, 0, 1);
       ctx.save(); ctx.globalAlpha = alpha;
       drawBgPlate(IMGS.s10, lerp(1.04, 1.14, ease(p)), Math.round(lerp(-30, 34, p)), 0, 0.12);
       drawPixelMotes(t, 92, 240, 0.95);
@@ -1007,40 +1161,90 @@
       drawPixelPlayer(pxPos, pyPos, 6.8, t, "glide", alpha);
       drawPixelWindSpirit(pxPos + 380, pyPos - 100 + Math.sin(t * 4.5) * 35, t, 0, alpha);
 
-      if (lt >= 1.5 && lt <= 11.5) {
-        drawToastBanner(192, "🔓 解除束缚：[ 试图占有 ]", "不屑被谁所有，你该有多自由？", "#8cf8ff", "#8cf8ff",
-          alpha * easeOut(clamp((lt - 1.5) / 0.45, 0, 1)) * clamp((11.5 - lt) / 0.5, 0, 1));
-      } else if (lt >= 12.5 && lt <= 24.5) {
-        drawToastBanner(192, "⚡ 觉醒终极技能：如你般自由 (MAX)", "不再执着挽留 · 与微风并肩穿破极光云海！", "#ffd878", "#ffd878",
-          alpha * easeOut(clamp((lt - 12.5) / 0.45, 0, 1)) * clamp((24.5 - lt) / 0.5, 0, 1));
+      if (lt >= 1.0 && lt <= 11.2) {
+        drawToastBanner(192, "🔓 解除束缚：[ 试图占有 ]", "握住小小风车和放肆的梦 · 冲破极光云海！", "#8cf8ff", "#8cf8ff",
+          alpha * easeOut(clamp((lt - 1.0) / 0.45, 0, 1)) * clamp((11.2 - lt) / 0.5, 0, 1));
       }
       drawParallaxForegroundClouds(t, 290, "rgba(126, 244, 255, 0.30)", alpha);
       ctx.restore();
     }
 
-    // INTERLUDE 2 (192.00 – 216.56): INSTRUMENTAL BRIDGE — Cloud Stairway Reunion with Little Kid!
+    // STAGE 13 (178.51 – 192.00): NEW — Kaleidoscope Sky · Star-Ring Warp Dash!
+    function renderStage8b(t, alpha) {
+      const lt = t - 178.51, p = clamp(lt / 13.49, 0, 1);
+      ctx.save(); ctx.globalAlpha = alpha;
+      drawBgPlate(IMGS.s18, lerp(1.02, 1.16, ease(p)), Math.round(lerp(28, -32, p)), 0, 0.10);
+      drawPixelMotes(t, 100, 260, 0.98);
+
+      // Expanding cosmic star-rings in perspective!
+      for (let i = 0; i < 4; i++) {
+        const u = ((lt * 0.75 + i * 0.25) % 1 + 1) % 1;
+        ctx.save();
+        ctx.globalAlpha = alpha * Math.sin(u * Math.PI) * 0.55;
+        ctx.strokeStyle = i % 2 === 0 ? "#8cf8ff" : "#ffd878";
+        ctx.lineWidth = 3 + u * 4;
+        ctx.beginPath();
+        ctx.ellipse(W / 2, H / 2 - 20, 60 + u * 720, 34 + u * 390, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      const pxPos = Math.round(lerp(360, 1280, ease(p)));
+      const pyPos = Math.round(610 + Math.sin(t * 4.4) * 38);
+      drawPixelPlayer(pxPos - 54, pyPos + 4, 6.8, t - 0.12, "glide", alpha * 0.28, "#ffd878");
+      drawPixelCloudPlatform(pxPos, pyPos + 10, 180, true);
+      drawPixelPlayer(pxPos, pyPos, 6.8, t, "glide", alpha);
+      drawPixelWindSpirit(Math.min(W - 140, pxPos + 360), pyPos - 90 + Math.sin(t * 4.8) * 32, t, 0, alpha);
+
+      if (lt >= 1.0 && lt <= 12.2) {
+        drawToastBanner(192, "⚡ 觉醒终极技能：如你般自由 (MAX)", "躲在你怀抱只顾向前走 · 却探不到尽头，你该有多辽阔？", "#ffd878", "#ffd878",
+          alpha * easeOut(clamp((lt - 1.0) / 0.45, 0, 1)) * clamp((12.2 - lt) / 0.5, 0, 1));
+      }
+      ctx.restore();
+    }
+
+    // INTERLUDE 2 (192.00 – 204.00): INSTRUMENTAL BRIDGE — Cloud Stairway Reunion with Little Kid!
     function renderInterlude2(t, alpha) {
-      const lt = t - 192.0, p = clamp(lt / 24.56, 0, 1);
+      const lt = t - 192.0, p = clamp(lt / 12.0, 0, 1);
       ctx.save(); ctx.globalAlpha = alpha;
       drawBgPlate(IMGS.s11, lerp(1.06, 1.01, ease(p)), Math.round(lerp(18, -18, p)), Math.round(lerp(14, -14, p)), 0.14);
       drawPixelMotes(t, 64, 52, 0.9);
 
-      // Grown traveler ascending cloud steps toward the glowing Little Kid ("小小孩") waiting at the top!
       const pxPos = Math.round(lerp(420, 960, ease(p)));
       const pyPos = Math.round(lerp(810, 620, ease(p)));
       drawPixelCloudPlatform(pxPos, pyPos + 8, 170, true);
-      drawPixelPlayer(pxPos, pyPos, 6.8, t, p < 0.88 ? "run" : "idle", alpha);
+      drawPixelPlayer(pxPos, pyPos, 6.8, t, p < 0.85 ? "run" : "idle", alpha);
 
-      // Little Kid waiting warmly at the sunlit dawn summit!
       const kx = 1140, ky = 610;
       drawPixelCloudPlatform(kx, ky + 8, 160, true);
       drawPixelPlayer(kx, ky, 5.4, t, "idle", alpha, null, true);
 
-      if (p > 0.65) {
-        const ra = easeOut(clamp((p - 0.65) / 0.15, 0, 1));
+      if (p > 0.55) {
+        const ra = easeOut(clamp((p - 0.55) / 0.18, 0, 1));
         drawEmoteBubble(pxPos - 52, pyPos - 180, "♡", "#ffb8c6", alpha * ra);
         drawEmoteBubble(kx + 46, ky - 148, "♡", "#ffd878", alpha * ra);
         drawToastBanner(195, "✨ 重逢：[ 最初的小小孩 ]", "原来一直在云端等我的，是那个最纯净的自己", "#ffd878", "#ffd878", alpha * ra);
+      }
+      ctx.restore();
+    }
+
+    // EX-STAGE (204.00 – 216.56): NEW — Whale Cloud Sanctuary · Soaring Beside the Spirit Whale!
+    function renderInterlude2b(t, alpha) {
+      const lt = t - 204.0, p = clamp(lt / 12.56, 0, 1);
+      ctx.save(); ctx.globalAlpha = alpha;
+      drawBgPlate(IMGS.s19, lerp(1.03, 1.13, ease(p)), Math.round(lerp(-32, 34, p)), 0, 0.10);
+      drawPixelMotes(t, 88, 110, 0.95);
+
+      const pxPos = Math.round(lerp(360, 1180, ease(p)));
+      const pyPos = Math.round(620 + Math.sin(t * 2.8) * 32);
+      drawPixelCloudPlatform(pxPos + 55, pyPos + 12, 280, true);
+      drawPixelPlayer(pxPos, pyPos, 6.8, t, "glide", alpha);
+      drawPixelPlayer(pxPos + 118, pyPos + 6, 5.4, t + 0.15, "glide", alpha, null, true);
+      drawEmoteBubble(pxPos - 50, pyPos - 178, "♪", "#8cf8ff", alpha * 0.92);
+
+      if (lt >= 1.2 && lt <= 11.2) {
+        const ra = easeOut(clamp((lt - 1.2) / 0.45, 0, 1)) * clamp((11.2 - lt) / 0.5, 0, 1);
+        drawToastBanner(192, "🐋 EX-STAGE · 云鲸圣殿", "与小小孩并肩乘风 · 跟随光之云鲸游向风之海", "#8cf8ff", "#ffd878", alpha * ra);
       }
       ctx.restore();
     }
@@ -1085,14 +1289,13 @@
       ctx.restore();
     }
 
-    // STAGE 10 (243.37 – 272.00): FINAL CHORUS — Grand Panoramic Sea of Wind (TRUE ENDING!)
+    // STAGE 15 (243.37 – 255.88): FINAL CHORUS PART 1 — Grand Panoramic Sea of Wind!
     function renderStage10(t, alpha) {
-      const lt = t - 243.37, p = clamp(lt / 28.63, 0, 1);
+      const lt = t - 243.37, p = clamp(lt / 12.51, 0, 1);
       ctx.save(); ctx.globalAlpha = alpha;
       drawBgPlate(IMGS.s13, lerp(1.03, 1.15, ease(p)), Math.round(lerp(-36, 36, p)), 0, 0.08);
       drawPixelMotes(t, 110, 180, 1.0);
 
-      // Soaring together across the boundless golden-turquoise Sea of Wind!
       const pxPos = Math.round(lerp(420, 1140, ease(p)));
       const pyPos = Math.round(560 + Math.sin(t * 3.0) * 38);
 
@@ -1102,35 +1305,55 @@
       drawPixelPlayer(pxPos + 120, pyPos + 6, 5.4, t + 0.15, "glide", alpha, null, true);
       drawPixelWindSpirit(pxPos + 400, pyPos - 95 + Math.sin(t * 4) * 34, t, 0, alpha);
 
-      if (lt >= 1.5 && lt <= 26.5) {
-        const ta = easeOut(clamp((lt - 1.5) / 0.6, 0, 1)) * clamp((26.5 - lt) / 0.8, 0, 1);
-        drawToastBanner(190, "🏆 TRUE ENDING · 找到风的海", "学会如你般自由 · 心怀小小风车，处处皆是风之海", "#ffd878", "#ffd878", alpha * ta);
+      if (lt >= 1.0 && lt <= 11.2) {
+        const ta = easeOut(clamp((lt - 1.0) / 0.5, 0, 1)) * clamp((11.2 - lt) / 0.6, 0, 1);
+        drawToastBanner(190, "🌊 纵览风之海 · 如你般自由", "你经过我每个灿烂时刻 · 孤独被染上童话底色", "#ffd878", "#8cf8ff", alpha * ta);
       }
       drawParallaxForegroundClouds(t, 220, "rgba(255, 236, 196, 0.36)", alpha);
       ctx.restore();
     }
 
-    // OUTRO (272.00 – 334.45): Full-Circle Sunset Wooden Pier + 5:04.62 Bloom GAME CLEAR Card!
+    // FINAL (255.88 – 272.00): NEW — Fairytale Starlight Harbor (TRUE ENDING!)
+    function renderStage10b(t, alpha) {
+      const lt = t - 255.88, p = clamp(lt / 16.12, 0, 1);
+      ctx.save(); ctx.globalAlpha = alpha;
+      drawBgPlate(IMGS.s20, lerp(1.03, 1.12, ease(p)), Math.round(lerp(28, -28, p)), 0, 0.10);
+      drawPixelMotes(t, 120, 90, 1.0);
+
+      const pxPos = Math.round(lerp(560, 1020, ease(p)));
+      const pyPos = 775;
+      drawPixelPlayer(pxPos, pyPos, 6.8, t, p < 0.72 ? "run" : "idle", alpha);
+      drawPixelPlayer(pxPos + 120, pyPos + 8, 5.4, t + 0.18, p < 0.72 ? "run" : "idle", alpha, null, true);
+      drawPixelWindSpirit(pxPos + 280, pyPos - 150 + Math.sin(t * 3.4) * 28, t, 0, alpha);
+
+      if (lt >= 1.2 && lt <= 14.8) {
+        const ta = easeOut(clamp((lt - 1.2) / 0.55, 0, 1)) * clamp((14.8 - lt) / 0.65, 0, 1);
+        drawToastBanner(190, "🏆 TRUE ENDING · 停泊星河港口", "再黯淡的星河都趁着风闪烁 · 心怀小小风车，处处皆是风之海", "#ffd878", "#ffd878", alpha * ta);
+      }
+      ctx.restore();
+    }
+
+    // OUTRO (272.00 – 303.00): Full-Circle Sunset Wooden Pier + GAME CLEAR Card (Clean 5:03 Finish!)
     function renderOutro(t, alpha) {
-      const lt = t - 272.0, p = clamp(lt / 62.45, 0, 1);
+      const lt = t - 272.0, p = clamp(lt / 31.0, 0, 1);
       ctx.save(); ctx.globalAlpha = alpha;
       drawBgPlate(IMGS.s1, lerp(1.08, 1.01, ease(p)), Math.round(lerp(18, -14, p)), 0, 0.18);
       drawPixelMotes(t, 48, 28, 0.85);
 
-      // Traveler returns peacefully to the opening sunset pier (272–304s)
-      if (t < 304.6) {
-        const oa = clamp((304.6 - t) / 1.4, 0, 1);
+      // Traveler returns peacefully to the opening sunset pier (272–286.5s)
+      if (t < 286.5) {
+        const oa = clamp((286.5 - t) / 1.2, 0, 1);
         drawPixelPlayer(910, 855, 7, t, "idle", alpha * oa);
-        drawPixelWindSpirit(lerp(1160, 1480, ease(clamp(lt / 28, 0, 1))), 480 + Math.sin(t * 2.2) * 24, t, 0, alpha * oa * 0.85);
-        if (lt >= 2.0 && lt <= 14.0) {
+        drawPixelWindSpirit(lerp(1160, 1480, ease(clamp(lt / 14, 0, 1))), 480 + Math.sin(t * 2.2) * 24, t, 0, alpha * oa * 0.85);
+        if (lt >= 1.5 && lt <= 12.5) {
           drawToastBanner(220, "✔ 放下执念 · 拥抱微风", "不再害怕告别 · 因为风一直都在心里", "#8cf8ff", "#8cf8ff",
-            alpha * easeOut(clamp((lt - 2.0) / 0.6, 0, 1)) * clamp((14.0 - lt) / 0.8, 0, 1));
+            alpha * easeOut(clamp((lt - 1.5) / 0.6, 0, 1)) * clamp((12.5 - lt) / 0.8, 0, 1));
         }
       }
 
-      // 304.6s (5:04.62 musical bloom) – 332.0s: Full-Circle GAME CLEAR Settlement Card!
-      if (t >= 304.6) {
-        const ga = easeOut(clamp((t - 304.6) / 1.2, 0, 1)) * clamp((332.5 - t) / 1.8, 0, 1);
+      // 286.5s – 302.5s: Full-Circle GAME CLEAR Settlement Card synced to 5:03 fade-out!
+      if (t >= 286.5) {
+        const ga = easeOut(clamp((t - 286.5) / 1.0, 0, 1)) * clamp((302.6 - t) / 1.6, 0, 1);
         ctx.save(); ctx.globalAlpha = alpha * ga;
         rrect(W / 2 - 420, 260, 840, 410, 16);
         ctx.fillStyle = "rgba(10, 15, 28, 0.92)"; ctx.fill();
@@ -1144,30 +1367,42 @@
 
         ctx.font = '600 24px "PingFang SC", sans-serif'; ctx.fillStyle = "#faf8f4";
         ctx.fillText(`通关玩家：${PLAYER_NAME}（LV.01 → LV.MAX）`, W / 2, 468);
-        ctx.fillText("最终信物：[ 小小风车 ]  ·  记忆收集：100%", W / 2, 518);
+        ctx.fillText("最终信物：[ 小小风车 ]  ·  全 21 关记忆收集 100%", W / 2, 518);
         ctx.fillStyle = "#ffd878";
         ctx.fillText("解锁真结局：学会如你般自由，你本身就是风的海", W / 2, 590);
         ctx.restore();
       }
+      // Smooth fade to black at 300.8–303.0s
+      if (t > 300.8) {
+        ctx.fillStyle = `rgba(6, 10, 18, ${clamp((t - 300.8) / 2.0, 0, 1)})`;
+        ctx.fillRect(0, 0, W, H);
+      }
       ctx.restore();
     }
 
-    // ── Master 13-Stage Timeline (0.00 – 334.45s) ──
+    // ── Master 21-Stage Timeline (0.00 – 303.00s) ──
     const STAGES = [
-      { id: "s0",   start: 0.00,   end: 15.91,  fn: renderStage0 },
-      { id: "s1",   start: 15.91,  end: 33.08,  fn: renderStage1 },
-      { id: "s2",   start: 33.08,  end: 39.36,  fn: renderStage2 },
-      { id: "s3",   start: 39.36,  end: 51.74,  fn: renderStage3 },
-      { id: "s4",   start: 51.74,  end: 77.76,  fn: renderStage4 },
-      { id: "s5",   start: 77.76,  end: 102.00, fn: renderStage5 },
-      { id: "int1", start: 102.00, end: 115.49, fn: renderInterlude1 },
-      { id: "s6",   start: 115.49, end: 140.15, fn: renderStage6 },
-      { id: "s7",   start: 140.15, end: 166.15, fn: renderStage7 },
-      { id: "s8",   start: 166.15, end: 192.00, fn: renderStage8 },
-      { id: "int2", start: 192.00, end: 216.56, fn: renderInterlude2 },
-      { id: "s9",   start: 216.56, end: 243.37, fn: renderStage9 },
-      { id: "s10",  start: 243.37, end: 272.00, fn: renderStage10 },
-      { id: "out",  start: 272.00, end: 335.00, fn: renderOutro }
+      { id: "s0",    start: 0.00,   end: 15.91,  fn: renderStage0 },
+      { id: "s1",    start: 15.91,  end: 33.08,  fn: renderStage1 },
+      { id: "s2",    start: 33.08,  end: 39.36,  fn: renderStage2 },
+      { id: "s3",    start: 39.36,  end: 51.74,  fn: renderStage3 },
+      { id: "s4",    start: 51.74,  end: 64.50,  fn: renderStage4 },
+      { id: "s4b",   start: 64.50,  end: 77.76,  fn: renderStage4b },
+      { id: "s5",    start: 77.76,  end: 89.88,  fn: renderStage5 },
+      { id: "s5b",   start: 89.88,  end: 102.00, fn: renderStage5b },
+      { id: "int1",  start: 102.00, end: 115.49, fn: renderInterlude1 },
+      { id: "s6",    start: 115.49, end: 127.64, fn: renderStage6 },
+      { id: "s6b",   start: 127.64, end: 140.15, fn: renderStage6b },
+      { id: "s7",    start: 140.15, end: 152.63, fn: renderStage7 },
+      { id: "s7b",   start: 152.63, end: 166.15, fn: renderStage7b },
+      { id: "s8",    start: 166.15, end: 178.51, fn: renderStage8 },
+      { id: "s8b",   start: 178.51, end: 192.00, fn: renderStage8b },
+      { id: "int2",  start: 192.00, end: 204.00, fn: renderInterlude2 },
+      { id: "int2b", start: 204.00, end: 216.56, fn: renderInterlude2b },
+      { id: "s9",    start: 216.56, end: 243.37, fn: renderStage9 },
+      { id: "s10",   start: 243.37, end: 255.88, fn: renderStage10 },
+      { id: "s10b",  start: 255.88, end: 272.00, fn: renderStage10b },
+      { id: "out",   start: 272.00, end: 303.50, fn: renderOutro }
     ];
     const XFADE = 0.45;
 
@@ -1189,11 +1424,18 @@
       drawCloudWipe(t, 33.08,  "rgba(218, 250, 255, 0.92)", "rgba(126, 244, 255, 0.62)");
       drawCloudWipe(t, 39.36,  "rgba(42, 54, 96, 0.90)",    "rgba(255, 178, 200, 0.52)");
       drawCloudWipe(t, 51.74,  "rgba(255, 236, 190, 0.92)", "rgba(255, 200, 120, 0.60)");
+      drawCloudWipe(t, 64.50,  "rgba(210, 252, 244, 0.90)", "rgba(255, 220, 158, 0.58)");
       drawCloudWipe(t, 77.76,  "rgba(200, 248, 255, 0.92)", "rgba(126, 244, 255, 0.62)");
+      drawCloudWipe(t, 89.88,  "rgba(70, 62, 118, 0.90)",   "rgba(255, 210, 145, 0.58)");
       drawCloudWipe(t, 115.49, "rgba(38, 48, 78, 0.92)",    "rgba(120, 148, 196, 0.55)");
+      drawCloudWipe(t, 127.64, "rgba(28, 44, 82, 0.90)",    "rgba(255, 196, 112, 0.54)");
+      drawCloudWipe(t, 152.63, "rgba(26, 38, 76, 0.90)",    "rgba(255, 224, 140, 0.56)");
       drawCloudWipe(t, 166.15, "rgba(190, 250, 255, 0.94)", "rgba(255, 224, 150, 0.64)");
+      drawCloudWipe(t, 178.51, "rgba(210, 200, 255, 0.92)", "rgba(126, 244, 255, 0.62)");
+      drawCloudWipe(t, 204.00, "rgba(255, 232, 218, 0.92)", "rgba(156, 236, 255, 0.62)");
       drawCloudWipe(t, 216.56, "rgba(255, 246, 218, 0.92)", "rgba(255, 212, 140, 0.62)");
       drawCloudWipe(t, 243.37, "rgba(220, 252, 255, 0.94)", "rgba(255, 226, 156, 0.66)");
+      drawCloudWipe(t, 255.88, "rgba(24, 38, 78, 0.92)",    "rgba(138, 224, 255, 0.60)");
 
       drawGameHUD(t);
       drawLyrics(t);

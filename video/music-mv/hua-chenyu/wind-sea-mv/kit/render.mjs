@@ -23,7 +23,7 @@ function parseArgs(argv) {
 const args = parseArgs(process.argv);
 if (args.help || args.h) {
   console.log(`用法: node render.mjs [选项]
-  --mode <full|preview|keyframes>  渲染模式（默认 full：全篇 5:34；preview：前 45.5 秒；keyframes：16 张关键帧）
+  --mode <full|preview|keyframes>  渲染模式（默认 full：全篇 5:03；preview：前 45.5 秒；keyframes：22 张关键帧）
   --player <姓名>                   玩家名称（默认 追风少年）
   --fps <数字>                      帧率（默认 30）
   --duration <秒>                   自定义时长（覆盖 mode 默认值）
@@ -38,11 +38,11 @@ const MODE = args.mode || "full";
 const PLAYER = args.player || "追风少年";
 const FPS = Number(args.fps || 30);
 const WORKERS = Number(args.workers || 6);
-const DEFAULT_DUR = MODE === "preview" ? 45.5 : 334.45;
+const DEFAULT_DUR = MODE === "preview" ? 45.5 : 303.0;
 const DUR = Number(args.duration || DEFAULT_DUR);
 const AUDIO = args.audio === "none" ? null : path.resolve(__dirname, args.audio || "song.mp3");
 const KEEP_FRAMES = Boolean(args["keep-frames"]);
-const KEYFRAME_TIMES = [2.5, 11.5, 29.0, 36.2, 41.2, 62.0, 88.0, 108.0, 125.0, 152.0, 180.0, 210.0, 228.0, 256.0, 282.0, 315.0];
+const KEYFRAME_TIMES = [2.5, 11.5, 29.0, 36.2, 41.2, 58.0, 71.0, 83.5, 95.5, 108.0, 121.0, 134.0, 146.5, 159.0, 172.0, 185.0, 198.0, 210.0, 230.0, 249.5, 263.5, 292.0];
 const TIMES = args.times ? String(args.times).split(",").map(Number) : (MODE === "keyframes" ? KEYFRAME_TIMES : null);
 
 const DEFAULT_OUT = TIMES
