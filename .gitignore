@@ -1,0 +1,6 @@
+node_modules/
+.DS_Store
+*.mp4
+.tmp_frames_*/
+keyframes_*/
+*.log
