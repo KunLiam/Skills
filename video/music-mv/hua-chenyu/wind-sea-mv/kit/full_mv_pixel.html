@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>风之海 — 华晨宇 像素RPG闯关 MV 完整版 (5:34)</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 1920px; height: 1080px; overflow: hidden; background: #0a1020; }
+    canvas { display: block; width: 1920px; height: 1080px; image-rendering: pixelated; }
+  </style>
+  <script src="lyrics.js"></script>
+</head>
+<body>
+  <canvas id="c" width="1920" height="1080"></canvas>
+  <script>
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d");
+    const W = 1920, H = 1080;
+    const PLAYER_NAME = new URLSearchParams(location.search).get("player") || "追风少年";
+
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const lerp = (a, b, u) => a + (b - a) * u;
+    const ease = (u) => { u = clamp(u, 0, 1); return u * u * (3 - 2 * u); };
+    const easeOut = (u) => { u = clamp(u, 0, 1); return 1 - Math.pow(1 - u, 3); };
+    const easeIn = (u) => { u = clamp(u, 0, 1); return u * u * u; };
+    const rnd = (seed) => {
+      const x = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
+      return x - Math.floor(x);
+    };
+
+    const ASSETS = {
+      s1:  "assets_px/px_wind_s1_pier_cloudsea.png",
+      s2:  "assets_px/px_wind_s2_cloud_sunset.png",
+      s3:  "assets_px/px_wind_s3_wind_corridor.png",
+      s4:  "assets_px/px_wind_s4_twilight_dusk.png",
+      s5:  "assets_px/px_wind_s5_windmill_hill.png",
+      s6:  "assets_px/px_wind_s6_sky_ocean_waves.png",
+      s7:  "assets_px/px_wind_s7_island_campfire.png",
+      s8:  "assets_px/px_wind_s8_misty_city_edge.png",
+      s9:  "assets_px/px_wind_s9_moonlit_attic.png",
+      s10: "assets_px/px_wind_s10_aurora_breakthrough.png",
+      s11: "assets_px/px_wind_s11_cloud_stairway_dawn.png",
+      s12: "assets_px/px_wind_s12_sky_flower_meadow.png",
+      s13: "assets_px/px_wind_s13_grand_sea_of_wind.png"
+    };
+    const IMGS = {};
+    function loadAll() {
+      return Promise.all(Object.entries(ASSETS).map(([k, src]) => new Promise((res, rej) => {
+        const im = new Image();
+        im.onload = () => { IMGS[k] = im; res(); };
+        im.onerror = () => rej(new Error("Failed to load " + src));
+        im.src = src;
+      })));
+    }
+
+    function rrect(x, y, w, h, r) {
+      x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h);
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    function drawBgPlate(img, scale, dx, dy, dimAlpha) {
+      if (!img) return;
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      const iw = img.naturalWidth || 1920, ih = img.naturalHeight || 1080;
+      const base = Math.max(W / iw, H / ih) * scale;
+      const dw = iw * base, dh = ih * base;
+      ctx.drawImage(img, Math.round((W - dw) / 2 + dx), Math.round((H - dh) / 2 + dy), Math.round(dw), Math.round(dh));
+      if (dimAlpha > 0) {
+        ctx.fillStyle = `rgba(10, 14, 28, ${dimAlpha})`;
+        ctx.fillRect(0, 0, W, H);
+      }
+      ctx.restore();
+    }
+
+    function px(ox, oy, ps, gx, gy, gw, gh, col) {
+      ctx.fillStyle = col;
+      ctx.fillRect(Math.round(ox + gx * ps), Math.round(oy + gy * ps), Math.round(gw * ps), Math.round(gh * ps));
+    }
+
+    // ── 4-Frame Smooth Pixel Pinwheel (小小风车) ──
+    function drawPixelPinwheel(cx, cy, ps, frameIdx) {
+      const f = ((frameIdx % 4) + 4) % 4;
+      const cols = ["#ffe49c", "#7ef4ff", "#ff9eb5", "#96f2b4"];
+      const c0 = cols[f], c1 = cols[(f + 1) % 4], c2 = cols[(f + 2) % 4], c3 = cols[(f + 3) % 4];
+      px(cx, cy, ps, -3, -1, 3, 2, c0); px(cx, cy, ps, -2, -2, 2, 1, c0);
+      px(cx, cy, ps,  0, -3, 2, 3, c1); px(cx, cy, ps,  2, -2, 1, 2, c1);
+      px(cx, cy, ps,  1,  0, 3, 2, c2); px(cx, cy, ps,  1,  2, 2, 1, c2);
+      px(cx, cy, ps, -1,  1, 2, 3, c3); px(cx, cy, ps, -2,  1, 1, 2, c3);
+      px(cx, cy, ps,  0,  0, 1, 1, "#ffffff");
+    }
+
+    // ── Expressive Pixel Emote Bubble ──
+    function drawEmoteBubble(cx, cy, symbol, accent, alpha) {
+      if (alpha <= 0.02) return;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      const bx = Math.round(cx - 24), by = Math.round(cy - 24);
+      rrect(bx, by, 48, 40, 8);
+      ctx.fillStyle = "rgba(12, 18, 34, 0.92)";
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = accent;
+      ctx.stroke();
+      ctx.fillStyle = accent;
+      ctx.fillRect(Math.round(cx - 4), by + 40, 8, 5);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = '800 22px "PingFang SC", sans-serif';
+      ctx.fillStyle = accent;
+      ctx.fillText(symbol, Math.round(cx), by + 20);
+      ctx.restore();
+    }
+
+    // ── Detailed 32-bit Pixel Traveler Sprite (supports grown traveler OR golden "小小孩" kid variant!) ──
+    function drawPixelPlayer(cx, cy, ps, t, pose = "idle", alpha = 1, tint = null, isKid = false) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      const ox = Math.round(cx), oy = Math.round(cy);
+      const step = Math.floor(t * 9.0) % 4;
+      const bob = pose === "run" ? (step % 2 === 1 ? -1 : 0) : pose === "float" ? Math.round(Math.sin(t * 3.2) * 1.3) : 0;
+      const by = oy + bob * ps;
+      const windWave = Math.floor(t * 10) % 4;
+
+      if (pose === "idle" || pose === "run" || pose === "reach" || pose === "sit") {
+        ctx.fillStyle = "rgba(8, 12, 26, 0.48)";
+        ctx.fillRect(ox - 6 * ps, oy - 1 * ps, 12 * ps, 2 * ps);
+      }
+
+      // Dynamic scarf (cyan for traveler, warm golden-rose for Little Kid!)
+      const scLen = pose === "glide" ? 12 : pose === "run" || pose === "jump" ? 9 : 6;
+      const scSpd = pose === "glide" ? 14 : 8.5;
+      for (let i = 0; i < scLen; i++) {
+        const sy = -15 + Math.round(Math.sin(t * scSpd - i * 0.65) * (pose === "glide" ? 1.6 : 1.1));
+        const col = tint || (isKid
+          ? (i % 2 === 0 ? "#ffd878" : "#ffb8c6")
+          : (i < 3 ? "#9cf8ff" : i % 2 === 0 ? "#7ee8ff" : "#e6fbff"));
+        px(ox, by, ps, -4 - i, sy, 2, i > scLen - 3 ? 1 : 2, col);
+      }
+
+      const ol = tint || "#10172a";
+      px(ox, by, ps, -5, -24, 10, 8, ol);
+      px(ox, by, ps, -6, -16, 12, 10, ol);
+
+      // Hair
+      px(ox, by, ps, -4, -23, 8, 3, tint || (isKid ? "#3a2824" : "#1c2c52"));
+      px(ox, by, ps, -3, -23, 5, 1, tint || (isKid ? "#6e4c3a" : "#3a568e"));
+      px(ox, by, ps, -5, -21, 2, 4, tint || (isKid ? "#3a2824" : "#1c2c52"));
+      px(ox, by, ps, -6 - (windWave % 2), -20, 2, 2, tint || (isKid ? "#4f372e" : "#283f72"));
+      px(ox, by, ps,  3, -21, 1, 2, tint || (isKid ? "#3a2824" : "#1c2c52"));
+
+      // Face
+      px(ox, by, ps, -3, -20, 6, 4, tint || "#ffe2c8");
+      px(ox, by, ps,  1, -19, 1, 2, tint || "#121a30");
+      px(ox, by, ps,  2, -17, 1, 1, tint || "#f7a8b0");
+
+      // Scarf collar & jacket
+      px(ox, by, ps, -4, -16, 8, 2, tint || (isKid ? "#ffd878" : "#8cf8ff"));
+      px(ox, by, ps, -3, -15, 6, 1, tint || "#fff6dc");
+      px(ox, by, ps, -5, -14, 10, 7, tint || (isKid ? "#fff3d6" : "#f8f4ea"));
+      px(ox, by, ps, -2, -14, 4, 6, tint || (isKid ? "#ff9eb5" : "#5db8e8"));
+      px(ox, by, ps, -5, -8, 10, 1, tint || "#ffd878");
+      px(ox, by, ps, -6 - (pose === "glide" ? 2 : 0), -11, 2, 4, tint || (isKid ? "#ffe4a8" : "#dbeeff"));
+
+      // Legs
+      if (pose === "sit") {
+        px(ox, by, ps, -3, -6, 6, 3, tint || "#22345c");
+        px(ox, by, ps,  3, -5, 4, 2, tint || "#182646");
+        px(ox, by, ps,  6, -5, 2, 2, tint || "#faf8f4");
+      } else if (pose === "run") {
+        const l1 = step === 0 ? -4 : step === 2 ? 2 : -1;
+        const l2 = step === 0 ?  2 : step === 2 ? -4 : 0;
+        px(ox, by, ps, l1, -6, 2, 5, tint || "#22345c"); px(ox, by, ps, l1, -1, 3, 1, tint || "#faf8f4");
+        px(ox, by, ps, l2, -6, 2, 5, tint || "#182646"); px(ox, by, ps, l2, -1, 3, 1, tint || "#faf8f4");
+      } else if (pose === "jump" || pose === "glide") {
+        px(ox, by, ps, -5, -6, 3, 4, tint || "#22345c"); px(ox, by, ps, -6, -2, 3, 1, tint || "#faf8f4");
+        px(ox, by, ps,  1, -5, 3, 3, tint || "#182646"); px(ox, by, ps,  2, -2, 3, 1, tint || "#faf8f4");
+      } else {
+        px(ox, by, ps, -3, -6, 2, 5, tint || "#22345c"); px(ox, by, ps, -3, -1, 3, 1, tint || "#faf8f4");
+        px(ox, by, ps,  1, -6, 2, 5, tint || "#182646"); px(ox, by, ps,  1, -1, 3, 1, tint || "#faf8f4");
+      }
+
+      // Arms & Pinwheel
+      if (pose === "reach") {
+        px(ox, by, ps, 4, -14, 6, 2, tint || "#f8f4ea"); px(ox, by, ps, 10, -14, 2, 2, tint || "#ffe2c8");
+        px(ox, by, ps, 3, -11, 6, 2, tint || "#dbeeff"); px(ox, by, ps,  9, -11, 2, 2, tint || "#ffe2c8");
+      } else if (pose !== "no_prop") {
+        px(ox, by, ps, 4, -14, 2, 3, tint || "#f8f4ea");
+        px(ox, by, ps, 5, -21, 1, 9, tint || "#ffd878");
+        if (!tint) drawPixelPinwheel(ox + 5 * ps, by - 22 * ps, ps, Math.floor(t * (pose === "glide" ? 18 : 8)));
+      }
+      ctx.restore();
+    }
+
+    function drawPixelPuff(cx, cy, u, color = "#fff4df") {
+      if (u <= 0 || u >= 1) return;
+      ctx.save();
+      ctx.globalAlpha = (1 - u) * 0.85;
+      for (let i = 0; i < 6; i++) {
+        const ang = -Math.PI + (i / 5) * Math.PI;
+        const r = 12 + u * 52;
+        const sz = Math.max(4, Math.round(12 * (1 - u * 0.6)));
+        ctx.fillStyle = color;
+        ctx.fillRect(Math.round(cx + Math.cos(ang) * r), Math.round(cy + Math.sin(ang) * r * 0.45), sz, sz);
+      }
+      ctx.restore();
+    }
+
+    function drawParallaxForegroundClouds(t, speed, tint, alpha) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      for (let i = 0; i < 6; i++) {
+        const w = 260 + Math.round(rnd(i * 17.3) * 180);
+        const x = Math.round((((i * 420 - t * speed) % (W + 500)) + (W + 500)) % (W + 500) - 250);
+        const y = H - 72 + Math.round(rnd(i * 9.1) * 34);
+        ctx.fillStyle = tint;
+        ctx.fillRect(x, y, w, 90);
+        ctx.fillRect(x + 36, y - 22, w - 72, 26);
+        ctx.fillRect(x + 84, y - 38, w - 168, 20);
+      }
+      ctx.restore();
+    }
+
+    function drawPixelCloudPlatform(cx, cy, w, glow = false) {
+      const x = Math.round(cx - w / 2), y = Math.round(cy);
+      ctx.save();
+      if (glow) {
+        ctx.fillStyle = "rgba(255, 220, 140, 0.24)";
+        ctx.fillRect(x - 10, y - 16, w + 20, 44);
+      }
+      ctx.fillStyle = "rgba(22, 32, 62, 0.55)"; ctx.fillRect(x + 10, y + 20, w - 20, 10);
+      ctx.fillStyle = "#e6cbb8"; ctx.fillRect(x + 6, y + 8, w - 12, 14);
+      ctx.fillStyle = "#fff8ec";
+      ctx.fillRect(x, y, w, 12);
+      ctx.fillRect(x + 16, y - 10, w - 32, 12);
+      ctx.fillRect(x + 40, y - 16, w - 80, 8);
+      ctx.fillStyle = "#ffd98c"; ctx.fillRect(x + 12, y + 12, w - 24, 4);
+      ctx.restore();
+    }
+
+    function drawPixelWindSpirit(cx, cy, t, dissolve = 0, alpha = 1) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      const ox = Math.round(cx), oy = Math.round(cy);
+      if (dissolve < 0.92) {
+        for (let i = 0; i < 22; i++) {
+          const pxPos = Math.round(ox - i * 13 - dissolve * i * 6);
+          const pyPos = Math.round(oy + Math.sin(t * 5.2 - i * 0.4) * (14 + i * 1.1));
+          const sz = Math.max(4, Math.round((15 - i * 0.55) * (1 - dissolve)));
+          ctx.fillStyle = i % 3 === 0 ? "#ffe69c" : "#8cf8ff";
+          ctx.globalAlpha = alpha * (1 - i / 24) * (1 - dissolve);
+          ctx.fillRect(pxPos - Math.floor(sz / 2), pyPos - Math.floor(sz / 2), sz, sz);
+        }
+        const cs = Math.round(24 * (1 - dissolve));
+        ctx.globalAlpha = alpha * (1 - dissolve);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(ox - cs / 2, oy - cs / 2, cs, cs);
+        ctx.strokeStyle = "#8cf8ff";
+        ctx.lineWidth = 4;
+        ctx.strokeRect(ox - cs / 2 - 5, oy - cs / 2 - 5, cs + 10, cs + 10);
+      }
+      if (dissolve > 0.01) {
+        for (let i = 0; i < 64; i++) {
+          const ang = rnd(i * 19.1) * Math.PI * 2;
+          const spd = 60 + rnd(i * 33.7) * 380;
+          const dpx = Math.round(ox + Math.cos(ang) * spd * dissolve + dissolve * 260);
+          const dpy = Math.round(oy + Math.sin(ang) * spd * dissolve - dissolve * 130 + Math.sin(t * 4 + i) * 10);
+          const sz = i % 4 === 0 ? 9 : i % 2 === 0 ? 6 : 4;
+          ctx.globalAlpha = alpha * clamp(1 - dissolve * 0.65, 0, 1);
+          ctx.fillStyle = i % 3 === 0 ? "#ffb8c6" : i % 2 === 0 ? "#8cf8ff" : "#ffe49c";
+          ctx.fillRect(dpx, dpy, sz, sz);
+        }
+      }
+      ctx.restore();
+    }
+
+    function drawPixelMotes(t, count, speedX, alpha, colorA = "#ffe49c", colorB = "#8cf8ff") {
+      ctx.save();
+      for (let i = 0; i < count; i++) {
+        const s1 = rnd(i * 11.3 + 2), s2 = rnd(i * 23.7 + 5), s3 = rnd(i * 7.1 + 9);
+        const x = Math.round(((s1 * W + t * speedX * (0.6 + s3)) % (W + 80) + (W + 80)) % (W + 80) - 40);
+        const y = Math.round(((s2 * H - t * (10 + s3 * 18) + Math.sin(t * 2 + i) * 18) % (H + 60) + (H + 60)) % (H + 60) - 30);
+        const sz = s3 > 0.68 ? 6 : 4;
+        ctx.globalAlpha = alpha * (0.4 + 0.6 * Math.abs(Math.sin(t * 2.5 + i)));
+        ctx.fillStyle = i % 3 === 0 ? colorB : colorA;
+        ctx.fillRect(x, y, sz, sz);
+      }
+      ctx.restore();
+    }
+
+    function drawCloudWipe(t, at, colorMain, colorEdge) {
+      const dt = t - at;
+      if (Math.abs(dt) > 0.52) return;
+      const u = (dt + 0.52) / 1.04;
+      const cx = Math.round(lerp(W + 320, -320, ease(u)));
+      ctx.save();
+      for (let row = 0; row < 12; row++) {
+        const rx = cx + Math.round(Math.sin(row * 1.7) * 90);
+        const ry = row * 94 - 10;
+        ctx.fillStyle = colorEdge; ctx.fillRect(rx - 220, ry, 440, 102);
+        ctx.fillStyle = colorMain; ctx.fillRect(rx - 150, ry + 8, 300, 86);
+      }
+      ctx.restore();
+    }
+
+    function drawToastBanner(cy, title, sub, borderCol, titleCol, alpha) {
+      if (alpha <= 0.02) return;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      const bw = 620, bh = 92;
+      const bx = Math.round(W / 2 - bw / 2), by = Math.round(cy - bh / 2);
+      rrect(bx, by, bw, bh, 12);
+      ctx.fillStyle = "rgba(10, 15, 28, 0.93)";
+      ctx.fill();
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = borderCol;
+      ctx.stroke();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = '800 24px "PingFang SC", sans-serif';
+      ctx.fillStyle = titleCol;
+      ctx.fillText(title, W / 2, by + 32);
+      ctx.font = '600 18px "PingFang SC", sans-serif';
+      ctx.fillStyle = "#e6eefc";
+      ctx.fillText(sub, W / 2, by + 66);
+      ctx.restore();
+    }
+
+    // ── Evolving Global Pixel RPG HUD + Full-Song Journey Mini-Map ──
+    function drawGameHUD(t) {
+      if (t < 15.7 || t > 304.2) return;
+      const a = easeOut(clamp((t - 15.7) / 0.5, 0, 1)) * clamp((304.2 - t) / 0.8, 0, 1);
+      ctx.save();
+      ctx.globalAlpha = a;
+
+      let lv = "LV.01", stageTag = "STAGE 01 · 云海拾忆", goal = "收集记忆碎片", purity = 100, windKmh = 24;
+      if (t < 27.2) {
+        const s = t < 18.2 ? 0 : t < 21.2 ? 1 : t < 24.4 ? 2 : 3;
+        goal = `收集记忆碎片 (${s}/3)`; windKmh = Math.round(lerp(14, 26, (t - 15.9) / 11.3));
+      } else if (t < 33.08) {
+        stageTag = "STAGE 01 · 踏云看日落"; goal = "已解锁坐骑：[日落云朵]"; windKmh = 22;
+      } else if (t < 39.36) {
+        lv = "LV.03"; stageTag = "STAGE 02 · 幻想气流冲浪";
+        windKmh = Math.round(lerp(28, 72, ease((t - 33.08) / 6.28)));
+        goal = `冲破幻想气流 · 风速 ${windKmh} km/h`;
+      } else if (t < 51.74) {
+        lv = "LV.04"; stageTag = "STAGE 03 · 迟钝伸手";
+        windKmh = Math.round(lerp(56, 0, easeOut((t - 39.36) / 3.2)));
+        goal = windKmh > 2 ? "QTE：长按留住风之灵" : "风不屑被谁所有……";
+      } else if (t < 77.76) {
+        lv = "LV.08"; stageTag = "STAGE 04 · 风车山丘";
+        goal = "点亮风之音符灯 · 追寻歌声"; windKmh = 36;
+      } else if (t < 102.0) {
+        lv = "LV.12"; stageTag = "STAGE 05 · 碧海踏风";
+        goal = "乘风破浪 · 守护小小风车"; windKmh = 68;
+      } else if (t < 115.49) {
+        lv = "LV.15"; stageTag = "REST · 浮空岛营火";
+        goal = "CHAPTER II 加载中……"; windKmh = 12;
+      } else if (t < 140.15) {
+        lv = "LV.22"; stageTag = "STAGE 06 · 宽广世界迷途";
+        purity = Math.round(lerp(95, 42, ease((t - 115.49) / 24.6)));
+        goal = "穿越人群孤立 · 找回纯粹轮廓"; windKmh = 18;
+      } else if (t < 166.15) {
+        lv = "LV.25"; stageTag = "STAGE 07 · 旅人的行囊";
+        purity = Math.round(lerp(42, 86, ease(clamp((t - 148) / 14, 0, 1))));
+        goal = "打开背包 · 重拾年少风车"; windKmh = 20;
+      } else if (t < 192.0) {
+        lv = "LV.32"; stageTag = "STAGE 08 · 极光破云";
+        purity = 100; windKmh = 82;
+        goal = "解除执念 · 学会如你般自由";
+      } else if (t < 216.56) {
+        lv = "LV.38"; stageTag = "BRIDGE · 云端天梯";
+        goal = "拾级而上 · 重逢「小小孩」"; windKmh = 30;
+      } else if (t < 243.37) {
+        lv = "LV.45"; stageTag = "STAGE 09 · 花海欢唱";
+        goal = "与小小孩同行 · 欢唱呼唤微风"; windKmh = 54;
+      } else if (t < 272.0) {
+        lv = "LV.MAX"; stageTag = "FINAL · 找到风的海";
+        goal = "🏆 TRUE ENDING · 你本身就是风的海"; windKmh = 99;
+      } else {
+        lv = "LV.MAX"; stageTag = "OUTRO · 回归日落栈道";
+        goal = "放下风车 · 拥抱自由微风"; windKmh = 16;
+      }
+
+      // Top-left Player Status Card
+      rrect(36, 26, 404, 94, 10);
+      ctx.fillStyle = "rgba(10, 15, 28, 0.90)";
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = t >= 243.37 ? "#ffd878" : purity < 60 ? "#7c98c8" : "rgba(255, 216, 120, 0.72)";
+      ctx.stroke();
+
+      ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      ctx.font = '700 24px "PingFang SC", sans-serif'; ctx.fillStyle = "#faf8f4";
+      ctx.fillText(`${PLAYER_NAME}  ${lv}`, 58, 54);
+      ctx.textAlign = "right";
+      ctx.font = '700 20px "DIN Alternate", "PingFang SC", sans-serif'; ctx.fillStyle = "#ffd878";
+      ctx.fillText(`💨 ${windKmh} km/h`, 420, 54);
+
+      ctx.textAlign = "left";
+      ctx.font = '600 14px "PingFang SC", sans-serif'; ctx.fillStyle = purity < 60 ? "#ff9eb5" : "#8cf8ff";
+      ctx.fillText(`纯真度 ${purity}%`, 58, 92);
+      rrect(144, 84, 274, 14, 4);
+      ctx.fillStyle = "rgba(255,255,255,0.14)"; ctx.fill();
+      rrect(144, 84, Math.round(274 * (purity / 100)), 14, 4);
+      ctx.fillStyle = purity < 60 ? "#ff8fa0" : t >= 243.37 ? "#ffd878" : "#66f09a";
+      ctx.fill();
+
+      // Top-right Stage Card
+      rrect(W - 440, 26, 404, 94, 10);
+      ctx.fillStyle = "rgba(10, 15, 28, 0.90)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(126, 244, 255, 0.68)";
+      ctx.stroke();
+      ctx.textAlign = "right";
+      ctx.font = '700 20px "PingFang SC", sans-serif'; ctx.fillStyle = "#ffd878";
+      ctx.fillText(stageTag, W - 56, 54);
+      ctx.font = '500 17px "PingFang SC", sans-serif'; ctx.fillStyle = "#dce6f8";
+      ctx.fillText(goal, W - 56, 90);
+
+      // Top-center Full-Voyage Mini-Map Progress Bar
+      const mp = clamp((t - 15.91) / (272.0 - 15.91), 0, 1);
+      rrect(W / 2 - 220, 34, 440, 44, 10);
+      ctx.fillStyle = "rgba(10, 15, 28, 0.84)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.24)";
+      ctx.lineWidth = 1.5; ctx.stroke();
+      const lx = W / 2 - 175, rx = W / 2 + 175, ly = 56;
+      ctx.fillStyle = "rgba(255,255,255,0.22)"; ctx.fillRect(lx, ly - 2, rx - lx, 4);
+      ctx.fillStyle = "#8cf8ff"; ctx.fillRect(lx, ly - 2, Math.round((rx - lx) * mp), 4);
+      for (const u of [0, 0.25, 0.5, 0.75, 1.0]) {
+        const sx = Math.round(lerp(lx, rx, u));
+        ctx.fillStyle = mp >= u ? "#ffd878" : "#6c7a96";
+        ctx.fillRect(sx - 4, ly - 4, 8, 8);
+      }
+      const mx = Math.round(lerp(lx, rx, mp));
+      ctx.fillStyle = "#ffffff"; ctx.fillRect(mx - 6, ly - 7, 12, 14);
+      ctx.fillStyle = "#7ef4ff"; ctx.fillRect(mx - 4, ly - 5, 8, 10);
+
+      ctx.restore();
+    }
+
+    function drawLyrics(t) {
+      const list = window.LYRICS || [];
+      let cur = null;
+      for (const it of list) {
+        if (t >= it.t && t <= it.end) { cur = it; break; }
+      }
+      const vg = ctx.createLinearGradient(0, H - 155, 0, H);
+      vg.addColorStop(0, "rgba(8, 12, 24, 0)");
+      vg.addColorStop(1, "rgba(8, 12, 24, 0.90)");
+      ctx.fillStyle = vg;
+      ctx.fillRect(0, H - 155, W, 155);
+
+      if (!cur) {
+        if (t >= 0.4 && t < 15.5) {
+          ctx.save();
+          ctx.textAlign = "center";
+          ctx.font = '600 22px "PingFang SC", sans-serif';
+          ctx.fillStyle = "#ffd878";
+          ctx.fillText(t < 5.6 ? "风之海 — 华晨宇 (Hua Chenyu)" : "作词：nekoy  ·  作曲：华晨宇", W / 2, H - 46);
+          ctx.restore();
+        }
+        return;
+      }
+
+      const fadeIn = easeOut(clamp((t - cur.t) / 0.25, 0, 1));
+      const fadeOut = clamp((cur.end - t) / 0.25, 0, 1);
+      ctx.save();
+      ctx.globalAlpha = Math.min(fadeIn, fadeOut);
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.font = '700 42px "PingFang SC", "Hiragino Sans GB", sans-serif';
+      ctx.shadowColor = "rgba(8, 12, 24, 0.98)"; ctx.shadowBlur = 12;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(cur.text, W / 2, H - 62);
+      ctx.restore();
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // ACT I (0.00 – 115.49)
+    // ════════════════════════════════════════════════════════════════
+
+    // STAGE 00 (0.00 – 15.91): 5s Hook + Live Pier Traveler & Side Card -> Leap into Cloud Sea
+    function renderStage0(t, alpha) {
+      const p = clamp(t / 15.91, 0, 1);
+      ctx.save(); ctx.globalAlpha = alpha;
+      drawBgPlate(IMGS.s1, lerp(1.06, 1.01, ease(p)), Math.round(lerp(-14, 14, p)), 0, 0.16);
+      drawPixelMotes(t, 42, 32, 0.88);
+
+      if (t >= 0.2 && t <= 5.4) {
+        const ha = easeOut(clamp((t - 0.2) / 0.55, 0, 1)) * clamp((5.4 - t) / 0.55, 0, 1);
+        ctx.save(); ctx.globalAlpha = alpha * ha;
+        rrect(W / 2 - 470, 310, 940, 274, 14);
+        ctx.fillStyle = "rgba(10, 15, 28, 0.90)"; ctx.fill();
+        ctx.lineWidth = 2.5; ctx.strokeStyle = "#ffd878"; ctx.stroke();
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.font = '800 58px "PingFang SC", sans-serif'; ctx.fillStyle = "#ffd878";
+        ctx.fillText("风  之  海", W / 2, 386);
+        ctx.font = '700 28px "PingFang SC", sans-serif'; ctx.fillStyle = "#faf8f4";
+        ctx.fillText("每个人心里，都住着一阵留不住的风——", W / 2, 464);
+        ctx.fillStyle = "#8cf8ff";
+        ctx.fillText("TA 曾推着你穿过云海，却从不属于任何人。", W / 2, 516);
+        ctx.restore();
+      }
+
+      if (t >= 5.3) {
+        const la = easeOut(clamp((t - 5.3) / 0.6, 0, 1));
+        let pxPos = 880, pyPos = 860, pose = "idle";
+        if (t >= 14.3) {
+          const jp = clamp((t - 14.3) / 1.61, 0, 1);
+          pxPos = lerp(880, 1180, easeIn(jp));
+          pyPos = 860 - Math.sin(jp * Math.PI * 0.85) * 210;
+          pose = jp < 0.28 ? "run" : "jump";
+          if (jp >= 0.25 && jp < 0.65) drawPixelPuff(940, 855, (jp - 0.25) / 0.4, "#ffe8b8");
+        }
+        drawPixelPlayer(pxPos, pyPos, 7, t, pose, alpha * la);
+
+        if (t >= 9.0) {
+          const sa = easeOut(clamp((t - 9.0) / 1.0, 0, 1));
+          drawPixelWindSpirit(lerp(1120, 960, ease(clamp((t - 9.0) / 5.5, 0, 1))), 520 + Math.sin(t * 3) * 24, t, 0, alpha * sa);
+          if (t >= 9.8 && t < 13.8) drawEmoteBubble(pxPos - 54, pyPos - 196, "!", "#ffd878", alpha * clamp((13.8 - t) / 0.4, 0, 1));
+        }
+
+        if (t >= 6.4 && t < 13.9) {
+          const da = easeOut(clamp((t - 6.4) / 0.45, 0, 1)) * clamp((13.9 - t) / 0.45, 0, 1);
+          ctx.save(); ctx.globalAlpha = alpha * da;
+          rrect(580, 560, 390, 68, 12);
+          ctx.fillStyle = "rgba(10, 15, 28, 0.90)"; ctx.fill();
+          ctx.lineWidth = 2; ctx.strokeStyle = "#8cf8ff"; ctx.stroke();
+          ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.font = '600 22px "PingFang SC", sans-serif'; ctx.fillStyle = "#faf8f4";
+          ctx.fillText(t < 9.8 ? "「风起了……是你在叫我吗？」" : "「等等我，别走那么快！」", 775, 594);
+          ctx.restore();
+        }
+
+        const slideOut = t > 14.1 ? easeIn(clamp((t - 14.1) / 0.6, 0, 1)) : 0;
+        if (slideOut < 0.99) {
+          const cardX = Math.round(1220 + slideOut * 720), cardY = 230, cw = 620, ch = 530;
+          ctx.save(); ctx.globalAlpha = alpha * la * (1 - slideOut);
+          rrect(cardX, cardY, cw, ch, 14);
+          ctx.fillStyle = "rgba(10, 15, 28, 0.92)"; ctx.fill();
+          ctx.lineWidth = 2.5; ctx.strokeStyle = "#ffd878"; ctx.stroke();
+          rrect(cardX + 14, cardY + 14, cw - 28, 48, 8);
+          ctx.fillStyle = "rgba(255, 216, 120, 0.14)"; ctx.fill();
+          ctx.textAlign = "left"; ctx.textBaseline = "middle";
+          ctx.font = '700 20px "PingFang SC", sans-serif'; ctx.fillStyle = "#ffd878";
+          ctx.fillText("NEW GAME · 逐风旅人档案", cardX + 32, cardY + 38);
+
+          const rows = [
+            { at: 5.8,  label: "玩家代号", val: `${PLAYER_NAME}  LV.01`, col: "#faf8f4" },
+            { at: 7.0,  label: "随身信物", val: "[ 小小风车 ] · 旋转中", col: "#ffd878" },
+            { at: 8.2,  label: "内心纯真", val: "MAX 100%", col: "#66f09a", bar: true },
+            { at: 9.4,  label: "寻风目标", val: "追上云端那头的微风", col: "#8cf8ff" },
+            { at: 10.6, label: "当前章节", val: "第一章 · 日落云海", col: "#ffb8c6" }
+          ];
+          for (let i = 0; i < rows.length; i++) {
+            const rw = rows[i]; if (t < rw.at) continue;
+            const ra = easeOut(clamp((t - rw.at) / 0.4, 0, 1));
+            const ry = cardY + 110 + i * 64;
+            ctx.save(); ctx.globalAlpha = alpha * la * (1 - slideOut) * ra;
+            ctx.textAlign = "left";
+            ctx.font = '600 19px "PingFang SC", sans-serif'; ctx.fillStyle = "#9cb0d4";
+            ctx.fillText(rw.label, cardX + 36, ry);
+            ctx.font = '700 22px "PingFang SC", sans-serif'; ctx.fillStyle = rw.col;
+            ctx.fillText(rw.val, cardX + 158, ry);
+            if (rw.bar) { rrect(cardX + 310, ry - 7, 250, 14, 5); ctx.fillStyle = "#66f09a"; ctx.fill(); }
+            ctx.restore();
+          }
+          if (t >= 11.8) {
+            const clicked = t >= 13.9;
+            const ba = easeOut(clamp((t - 11.8) / 0.4, 0, 1));
+            ctx.save(); ctx.globalAlpha = alpha * la * (1 - slideOut) * ba * (clicked ? 1 : 0.86 + 0.14 * Math.sin(t * 8));
+            rrect(cardX + 60, cardY + 440, 500, 56, 10);
+            ctx.fillStyle = clicked ? "#8cf8ff" : "#ffd878"; ctx.fill();
+            ctx.textAlign = "center"; ctx.font = '800 22px "PingFang SC", sans-serif'; ctx.fillStyle = "#10172a";
+            ctx.fillText(clicked ? "✔  START · 跃入日落云海！" : "▶  PRESS START · 踏上追风之旅", cardX + 310, cardY + 468);
+            ctx.restore();
+          }
+          ctx.restore();
+        }
+      }
+      ctx.restore();
+    }
+
+    // STAGE 01 (15.91 – 33.08): Cloud Platformer + 3 Memory Shards -> Sunset Cloud Mount
+    function renderStage1(t, alpha) {
+      const lt = t - 15.91, p = clamp(lt / 17.17, 0, 1);
+      ctx.save(); ctx.globalAlpha = alpha;
+      drawBgPlate(IMGS.s2, lerp(1.03, 1.11, ease(p)), Math.round(lerp(28, -28, p)), 0, 0.12);
+      drawPixelMotes(t, 52, 72, 0.9);
+
+      const plats = [
+        { x: 380, y: 780, w: 230 }, { x: 740, y: 705, w: 230 },
+        { x: 1100, y: 635, w: 230 }, { x: 1460, y: 565, w: 250 }
+      ];
+      for (let i = 0; i < plats.length; i++) {
+        drawPixelCloudPlatform(plats[i].x, Math.round(plats[i].y + Math.sin(t * 2.2 + i) * 6), plats[i].w, i === 3 && t >= 26.8);
+      }
+
+      const shards = [
+        { at: 18.2, x: 560,  y: 605, title: "✨ 拾取记忆 [ 年少的风车 ]" },
+        { at: 21.2, x: 920,  y: 535, title: "✨ 拾取记忆 [ 没说出口的告别 ]" },
+        { at: 24.4, x: 1280, y: 470, title: "✨ 拾取记忆 [ 落日下的约定 ]" }
+      ];
+      for (const sh of shards) {
+        if (t < sh.at) {
+          const sy = Math.round(sh.y + Math.sin(t * 4 + sh.x) * 8);
+          ctx.fillStyle = "rgba(255, 224, 150, 0.25)"; ctx.fillRect(sh.x - 20, sy - 20, 40, 40);
+          ctx.fillStyle = "#8cf8ff"; ctx.fillRect(sh.x - 12, sy - 12, 24, 24);
+          ctx.fillStyle = "#ffffff"; ctx.fillRect(sh.x - 6, sy - 6, 12, 12);
+          ctx.strokeStyle = "#ffd878"; ctx.lineWidth = 3; ctx.strokeRect(sh.x - 16, sy - 16, 32, 32);
+        }
+      }
+
+      let pxPos, pyPos, pose;
+      if (t < 27.2) {
+        const seg = clamp((t - 15.91) / 11.29, 0, 1) * 3;
+        const idx = Math.min(2, Math.floor(seg)), sub = seg - idx;
+        pxPos = lerp(plats[idx].x, plats[idx + 1].x, ease(sub));
+        pyPos = lerp(plats[idx].y, plats[idx + 1].y, ease(sub)) - Math.sin(sub * Math.PI) * 115;
+        pose = (sub > 0.1 && sub < 0.9) ? "jump" : "run";
+        if (sub < 0.2) drawPixelPuff(plats[idx].x, plats[idx].y, sub / 0.2, "#fff4df");
+        if (sub > 0.85) drawPixelPuff(plats[idx + 1].x, plats[idx + 1].y, (sub - 0.85) / 0.15, "#fff4df");
+      } else {
+        const fp = ease(clamp((t - 27.2) / 5.8, 0, 1));
+        pxPos = lerp(1460, 1280, fp); pyPos = lerp(558, 462, fp); pose = "float";
+        drawPixelCloudPlatform(pxPos, pyPos + 6, 184, true);
+        if (t >= 28.0 && t < 32.0) drawEmoteBubble(pxPos - 56, pyPos - 178, "♡", "#ffb8c6", alpha * easeOut(clamp((t - 28.0) / 0.4, 0, 1)));
+      }
+      drawPixelPlayer(pxPos, pyPos, 6.5, t, pose, alpha);
+
+      for (const sh of shards) {
+        if (t >= sh.at && t < sh.at + 1.9) {
+          const u = (t - sh.at) / 1.9, fy = Math.round(sh.y - 165 - u * 22);
+          if (u < 0.45) drawPixelPuff(sh.x, sh.y, u / 0.45, "#8cf8ff");
+          ctx.save(); ctx.globalAlpha = alpha * clamp((1.9 - (t - sh.at)) / 0.45, 0, 1);
+          rrect(sh.x - 175, fy - 24, 350, 48, 8);
+          ctx.fillStyle = "rgba(10, 15, 28, 0.94)"; ctx.fill();
+          ctx.strokeStyle = "#ffd878"; ctx.lineWidth = 2; ctx.stroke();
+          ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.font = '700 20px "PingFang SC", sans-serif'; ctx.fillStyle = "#ffd878";
+          ctx.fillText(sh.title, sh.x, fy);
+          ctx.restore();
+        }
+      }
+
+      drawPixelWindSpirit(lerp(1060, 1680, ease(p)), lerp(430, 325, ease(p)) + Math.sin(t * 3) * 20, t, 0, alpha);
+      if (t >= 27.3 && t <= 32.5) {
+        drawToastBanner(192, "🏆 摘下坐骑：[ 日落云朵 ]", "踏在脚下看日落 · 世界在这一刻安静了", "#ffd878", "#ffd878",
+          alpha * easeOut(clamp((t - 27.3) / 0.4, 0, 1)) * clamp((32.5 - t) / 0.5, 0, 1));
+      }
+      drawParallaxForegroundClouds(t, 95, "rgba(255, 224, 190, 0.36)", alpha);
+      ctx.restore();
+    }
+
+    // STAGE 02 (33.08 – 39.36): High-Speed Cloud Surfing + Cyan Afterimages + Emotional Wind Gates
+    function renderStage2(t, alpha) {
+      const lt = t - 33.08, p = clamp(lt / 6.28, 0, 1);
+      ctx.save(); ctx.globalAlpha = alpha;
+      drawBgPlate(IMGS.s3, lerp(1.02, 1.13, ease(p)), Math.round(lerp(36, -40, p)), 0, 0.12);
+      drawPixelMotes(t, 80, 260, 0.95);
+
+      ctx.save(); ctx.globalAlpha = alpha * 0.42;
+      for (let i = 0; i < 14; i++) {
+        const sx = Math.round((((i * 210 - t * 900) % (W + 300)) + (W + 300)) % (W + 300) - 150);
+        const sy = i < 7 ? 135 + i * 24 : 740 + (i - 7) * 28;
+        ctx.fillStyle = i % 2 === 0 ? "#8cf8ff" : "#ffe49c";
+        ctx.fillRect(sx, sy, 110 + (i % 3) * 50, 3);
+      }
+      ctx.restore();
+
+      const pxPos = Math.round(lerp(380, 960, ease(p)));
+      const pyPos = Math.round(585 + Math.sin(t * 4.2) * 26);
+
+      const cards = [
+        { appear: 33.2, hit: 35.1, y: 465, label: "幻想气流 · 推着我勇敢", bonus: "SPEED UP ↑" },
+        { appear: 35.0, hit: 36.9, y: 545, label: "幻想气流 · 吹散了犹豫", bonus: "风速 52 km/h ↑" },
+        { appear: 36.8, hit: 38.7, y: 455, label: "幻想气流 · 奔向云那头", bonus: "风速 MAX 72 km/h!" }
+      ];
+      for (const cd of cards) {
+        if (t >= cd.appear && t < cd.hit) {
+          const u = easeOut(clamp((t - cd.appear) / (cd.hit - cd.appear), 0, 1));
+          const cx = Math.round(lerp(1680, pxPos + 150, u)), cy = Math.round(cd.y);
+          rrect(cx - 165, cy - 42, 330, 84, 10);
+          ctx.fillStyle = "rgba(10, 20, 38, 0.94)"; ctx.fill();
+          ctx.lineWidth = 2.5; ctx.strokeStyle = "#7ef4ff"; ctx.stroke();
+          ctx.fillStyle = "#7ef4ff"; ctx.fillRect(cx - 165, cy - 42, 330, 7);
+          ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.font = '800 22px "PingFang SC", sans-serif'; ctx.fillStyle = "#ffffff";
+          ctx.fillText(`🌀 ${cd.label}`, cx, cy - 6);
+          ctx.font = '600 16px "PingFang SC", sans-serif'; ctx.fillStyle = "#ffd878";
+          ctx.fillText(cd.bonus, cx, cy + 24);
+        } else if (t >= cd.hit && t < cd.hit + 0.85) {
+          drawPixelPuff(pxPos + 40, cd.y, (t - cd.hit) / 0.85, "#8cf8ff");
+        }
+      }
+
+      drawPixelPlayer(pxPos - 56, pyPos + 4, 6.5, t - 0.14, "glide", alpha * 0.22, "#7ef4ff");
+      drawPixelPlayer(pxPos - 28, pyPos + 2, 6.5, t - 0.07, "glide", alpha * 0.42, "#9cf8ff");
+      drawPixelCloudPlatform(pxPos, pyPos + 8, 160, true);
+      drawPixelPlayer(pxPos, pyPos, 6.5, t, "glide", alpha);
+      drawEmoteBubble(pxPos - 54, pyPos - 176, "♪", "#8cf8ff", alpha * 0.92);
+      drawPixelWindSpirit(pxPos + 430, pyPos - 85 + Math.sin(t * 4.2) * 32, t, 0, alpha);
+      drawParallaxForegroundClouds(t, 280, "rgba(166, 244, 255, 0.32)", alpha);
+      ctx.restore();
+    }
+
+    // STAGE 03 (39.36 – 51.74): Bullet-Time Slow-Mo QTE (88% -> MISS) + Firefly Dissolve
+    function renderStage3(t, alpha) {
+      const lt = t - 39.36, p = clamp(lt / 12.38, 0, 1);
+      ctx.save(); ctx.globalAlpha = alpha;
+      drawBgPlate(IMGS.s4, lerp(1.06, 1.01, ease(p)), Math.round(lerp(-14, 14, p)), 0, 0.16);
+      drawPixelMotes(t, 48, 28, 0.85);
+
+      const pxPos = Math.round(lerp(640, 825, easeOut(clamp(lt / 6.0, 0, 1))));
+      const pyPos = 745;
+      drawPixelPlayer(pxPos, pyPos, 7.2, t, lt < 7.5 ? "reach" : "idle", alpha);
+
+      const dissolve = ease(clamp((lt - 3.6) / 4.2, 0, 1));
+      const sx = Math.round(lerp(1055, 1240, ease(p)));
+      const sy = Math.round(lerp(620, 540, ease(p)) + Math.sin(t * 2.0) * 10);
+      drawPixelWindSpirit(sx, sy, t, dissolve, alpha);
+
+      if (lt >= 0.4 && lt < 3.6) {
+        const qa = easeOut(clamp((lt - 0.4) / 0.35, 0, 1));
+        const prog = easeOut(clamp((lt - 0.6) / 2.4, 0, 1)) * 0.88;
+        const shakeX = lt > 3.0 ? Math.round(Math.sin(lt * 75) * 6) : 0;
+        ctx.save(); ctx.globalAlpha = alpha * qa;
+        rrect(W / 2 - 310 + shakeX, 148, 620, 136, 12);
+        ctx.fillStyle = "rgba(10, 15, 28, 0.94)"; ctx.fill();
+        ctx.lineWidth = 2.5; ctx.strokeStyle = lt > 3.0 ? "#ff8fa0" : "#ffd878"; ctx.stroke();
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.font = '700 22px "PingFang SC", sans-serif'; ctx.fillStyle = "#faf8f4";
+        ctx.fillText("▶  长按指令 [ 留住这一刻 · 别走 ]", W / 2 + shakeX, 184);
+        rrect(W / 2 - 250 + shakeX, 212, 500, 26, 6);
+        ctx.fillStyle = "rgba(255,255,255,0.14)"; ctx.fill();
+        rrect(W / 2 - 250 + shakeX, 212, Math.round(500 * prog), 26, 6);
+        ctx.fillStyle = lt > 3.0 ? "#ff8fa0" : "#ffd878"; ctx.fill();
+        ctx.font = '700 16px "DIN Alternate", "PingFang SC", sans-serif'; ctx.fillStyle = "#8cf8ff";
+        ctx.fillText(`挽留进度 ${Math.round(prog * 100)}% …… 就差一点点`, W / 2 + shakeX, 260);
+        ctx.restore();
+      } else if (lt >= 3.6 && lt <= 11.8) {
+        const ra = easeOut(clamp((lt - 3.6) / 0.35, 0, 1)) * clamp((11.8 - lt) / 0.6, 0, 1);
+        drawToastBanner(205, "88% → MISS（抓不住的，才叫风）", "✨ 捕捉你的身影瞬间，却弄丢了你来时的线索", "#ff8fa0", "#ff96a8", alpha * ra);
+        drawEmoteBubble(pxPos - 54, pyPos - 196, "…", "#9cb0d4", alpha * ra);
+      }
+      drawParallaxForegroundClouds(t, 24, "rgba(116, 152, 210, 0.28)", alpha);
+      ctx.restore();
+    }
+
+    // STAGE 04 (51.74 – 77.76): FIRST CHORUS — Windmill Hill · Lighting Musical Lanterns!
+    function renderStage4(t, alpha) {
+      const lt = t - 51.74, p = clamp(lt / 26.02, 0, 1);
+      ctx.save(); ctx.globalAlpha = alpha;
+      drawBgPlate(IMGS.s5, lerp(1.03, 1.12, ease(p)), Math.round(lerp(30, -34, p)), 0, 0.14);
+      drawPixelMotes(t, 60, 110, 0.9);
+
+      // Traveler jogging across the golden windmill ridge lighting 4 musical lanterns!
+      const pxPos = Math.round(lerp(280, 1560, ease(p)));
+      const pyPos = Math.round(770 - Math.sin(p * Math.PI) * 55);
+
+      const lanterns = [
+        { x: 460,  y: 690, lbl: "♪ 唤醒沉睡的歌" },
+        { x: 800,  y: 660, lbl: "♪ 听见风的呼唤" },
+        { x: 1140, y: 655, lbl: "♪ 追寻歌声方向" },
+        { x: 1460, y: 685, lbl: "✨ 找到风的线索!" }
+      ];
+      for (const ln of lanterns) {
+        const lit = pxPos >= ln.x - 40;
+        const bob = Math.round(Math.sin(t * 3 + ln.x) * 8);
+        const ly = ln.y + bob;
+        if (lit) {
+          ctx.fillStyle = "rgba(255, 224, 140, 0.28)";
+          ctx.fillRect(ln.x - 28, ly - 28, 56, 56);
+        }
+        rrect(ln.x - 16, ly - 16, 32, 32, 6);
+        ctx.fillStyle = lit ? "#ffd878" : "rgba(30, 42, 68, 0.85)";
+        ctx.fill();
+        ctx.strokeStyle = lit ? "#ffffff" : "#8cf8ff";
+        ctx.lineWidth = 2; ctx.stroke();
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.font = '700 18px "PingFang SC", sans-serif';
+        ctx.fillStyle = lit ? "#10172a" : "#8cf8ff";
+        ctx.fillText("♪", ln.x, ly);
+
+        if (lit && pxPos < ln.x + 280) {
+          const fy = ly - 44;
+          rrect(ln.x - 95, fy - 18, 190, 36, 6);
+          ctx.fillStyle = "rgba(10, 15, 28, 0.90)"; ctx.fill();
+          ctx.strokeStyle = "#ffd878"; ctx.lineWidth = 1.5; ctx.stroke();
+          ctx.font = '700 16px "PingFang SC", sans-serif'; ctx.fillStyle = "#ffd878";
+          ctx.fillText(ln.lbl, ln.x, fy);
+        }
+      }
+
+      drawPixelPlayer(pxPos, pyPos, 6.5, t, "run", alpha);
+      drawEmoteBubble(pxPos - 52, pyPos - 180, "♪", "#ffd878", alpha * 0.9);
+      drawPixelWindSpirit(Math.min(W - 140, pxPos + 340), pyPos - 140 + Math.sin(t * 4) * 32, t, 0, alpha);
+
+      if (lt >= 1.2 && lt <= 7.0) {
+        drawToastBanner(190, "🎵 支线解锁：风吹醒沉睡那首歌", "点亮山脊音符灯 · 循着歌声去往风的海", "#ffd878", "#ffd878",
+          alpha * easeOut(clamp((lt - 1.2) / 0.4, 0, 1)) * clamp((7.0 - lt) / 0.5, 0, 1));
+      }
+      ctx.restore();
+    }
+
+    // STAGE 05 (77.76 – 102.00): HIGH CHORUS 1 — Sky-Ocean Wave Surfing + Relic Combo!
+    function renderStage5(t, alpha) {
+      const lt = t - 77.76, p = clamp(lt / 24.24, 0, 1);
+      ctx.save(); ctx.globalAlpha = alpha;
+      drawBgPlate(IMGS.s6, lerp(1.02, 1.14, ease(p)), Math.round(lerp(40, -45, p)), 0, 0.10);
+      drawPixelMotes(t, 84, 240, 0.95);
+
+      const pxPos = Math.round(lerp(360, 1240, ease(p)));
+      const pyPos = Math.round(620 + Math.sin(t * 3.8) * 48);
+
+      // Surfing afterimages + golden cloud surfboard!
+      drawPixelPlayer(pxPos - 58, pyPos + 6, 6.8, t - 0.14, "glide", alpha * 0.22, "#7ef4ff");
+      drawPixelPlayer(pxPos - 28, pyPos + 3, 6.8, t - 0.07, "glide", alpha * 0.44, "#9cf8ff");
+      drawPixelCloudPlatform(pxPos, pyPos + 10, 180, true);
+      drawPixelPlayer(pxPos, pyPos, 6.8, t, "glide", alpha);
+      drawPixelWindSpirit(pxPos + 380, pyPos - 90 + Math.sin(t * 4.5) * 38, t, 0, alpha);
+
+      // High-contrast Chorus Relic Cards (Integer snapped, zero jitter!)
+      const combo = Math.min(12, 1 + Math.floor(lt / 1.8));
+      rrect(W - 310, 152, 270, 68, 10);
+      ctx.fillStyle = "rgba(10, 20, 38, 0.90)"; ctx.fill();
+      ctx.strokeStyle = "#ffd878"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.font = '800 26px "DIN Alternate", "PingFang SC", sans-serif'; ctx.fillStyle = "#ffd878";
+      ctx.fillText(`自由共鸣 COMBO ×${combo}`, W - 175, 186);
+
+      const relics = [
+        { s: 1.5,  e: 8.5,  t1: "✨ 珍藏记忆：[ 最纯净的轮廓 ]", t2: "握住小小风车和放肆的梦" },
+        { s: 9.5,  e: 16.5, t1: "🌊 碧海踏浪 · 拥抱温柔",       t2: "平凡中寻得我拥抱你的温柔" },
+        { s: 17.5, e: 23.5, t1: "💨 触发思辨：你该有多自由？",   t2: "而你却有保留地遇见我 · 不屑被谁所有" }
+      ];
+      for (const rl of relics) {
+        if (lt >= rl.s && lt <= rl.e) {
+          const ra = easeOut(clamp((lt - rl.s) / 0.45, 0, 1)) * clamp((rl.e - lt) / 0.5, 0, 1);
+          drawToastBanner(192, rl.t1, rl.t2, "#8cf8ff", "#8cf8ff", alpha * ra);
+        }
+      }
+      drawParallaxForegroundClouds(t, 260, "rgba(140, 244, 255, 0.34)", alpha);
+      ctx.restore();
+    }
+
+    // INTERLUDE 1 (102.00 – 115.49): CHAPTER II Rest Point — Floating Island Campfire!
+    function renderInterlude1(t, alpha) {
+      const lt = t - 102.0, p = clamp(lt / 13.49, 0, 1);
+      ctx.save(); ctx.globalAlpha = alpha;
+      drawBgPlate(IMGS.s7, lerp(1.06, 1.01, ease(p)), Math.round(lerp(-12, 12, p)), 0, 0.24);
+      drawPixelMotes(t, 36, 22, 0.8, "#ffd878", "#ff9eb5");
+
+      // Traveler sitting peacefully beside the campfire watching the pinwheel spin
+      drawPixelPlayer(760, 790, 7.2, t, "sit", alpha);
+      drawEmoteBubble(710, 610, "…", "#ffd878", alpha * 0.88);
+
+      // Chapter II Loading Card
+      const ca = easeOut(clamp(lt / 0.7, 0, 1)) * clamp((13.2 - lt) / 0.7, 0, 1);
+      ctx.save(); ctx.globalAlpha = alpha * ca;
+      rrect(W / 2 - 360, 250, 720, 186, 14);
+      ctx.fillStyle = "rgba(10, 15, 28, 0.90)"; ctx.fill();
+      ctx.lineWidth = 2.5; ctx.strokeStyle = "#ffd878"; ctx.stroke();
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.font = '700 20px "DIN Alternate", sans-serif'; ctx.fillStyle = "#8cf8ff";
+      ctx.fillText("CHAPTER II · LOADING NEXT WORLD", W / 2, 296);
+      ctx.font = '800 38px "PingFang SC", sans-serif'; ctx.fillStyle = "#ffd878";
+      ctx.fillText("宽广世界 · 孤独与自由", W / 2, 350);
+      rrect(W / 2 - 220, 396, 440, 12, 5);
+      ctx.fillStyle = "rgba(255,255,255,0.16)"; ctx.fill();
+      rrect(W / 2 - 220, 396, Math.round(440 * p), 12, 5);
+      ctx.fillStyle = "#ffd878"; ctx.fill();
+      ctx.restore();
+      ctx.restore();
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // ACT II (115.49 – 216.56)
+    // ════════════════════════════════════════════════════════════════
+
+    // STAGE 06 (115.49 – 140.15): VERSE 2 — Vast Misty City Overpass · Sprinting Past Adult Obstacles!
+    function renderStage6(t, alpha) {
+      const lt = t - 115.49, p = clamp(lt / 24.66, 0, 1);
+      ctx.save(); ctx.globalAlpha = alpha;
+      drawBgPlate(IMGS.s8, lerp(1.03, 1.10, ease(p)), Math.round(lerp(24, -28, p)), 0, 0.22);
+
+      // Gentle slanted pixel rain
+      ctx.save(); ctx.globalAlpha = alpha * 0.35; ctx.fillStyle = "#9cb8e0";
+      for (let i = 0; i < 48; i++) {
+        const rx = Math.round(((rnd(i * 19.7) * W - t * 180) % W + W) % W);
+        const ry = Math.round(((rnd(i * 7.3) * H + t * 520) % H + H) % H);
+        ctx.fillRect(rx, ry, 2, 18);
+      }
+      ctx.restore();
+
+      const pxPos = Math.round(lerp(360, 1180, ease(p)));
+      const pyPos = 785;
+
+      // Crisp slow-approaching obstacle cards (Integer coordinates, ZERO jitter!)
+      const obs = [
+        { ap: 117.0, hit: 121.5, y: 540, title: "人群孤立 · DEBUFF", sub: "宽广世界里慌张奔走" },
+        { ap: 123.0, hit: 127.5, y: 500, title: "世俗喧嚣 · 迷雾",   sub: "听不见风来的方向" },
+        { ap: 129.0, hit: 133.5, y: 540, title: "失落的线索",        sub: "纯真度持续衰减 ↓" }
+      ];
+      for (const ob of obs) {
+        if (t >= ob.ap && t < ob.hit) {
+          const u = easeOut(clamp((t - ob.ap) / (ob.hit - ob.ap), 0, 1));
+          const cx = Math.round(lerp(1680, pxPos + 150, u)), cy = Math.round(ob.y);
+          rrect(cx - 155, cy - 42, 310, 84, 10);
+          ctx.fillStyle = "rgba(14, 18, 34, 0.94)"; ctx.fill();
+          ctx.lineWidth = 2.5; ctx.strokeStyle = "#ff8fa0"; ctx.stroke();
+          ctx.fillStyle = "#ff8fa0"; ctx.fillRect(cx - 155, cy - 42, 310, 7);
+          ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.font = '800 22px "PingFang SC", sans-serif'; ctx.fillStyle = "#ffffff";
+          ctx.fillText(`⚠ ${ob.title}`, cx, cy - 6);
+          ctx.font = '600 16px "PingFang SC", sans-serif'; ctx.fillStyle = "#ffb8c6";
+          ctx.fillText(ob.sub, cx, cy + 24);
+        } else if (t >= ob.hit && t < ob.hit + 0.8) {
+          drawPixelPuff(pxPos + 60, ob.y, (t - ob.hit) / 0.8, "#ff9eb5");
+        }
+      }
+
+      drawPixelPlayer(pxPos, pyPos, 6.8, t, "run", alpha);
+      if (lt > 4 && lt < 22) drawEmoteBubble(pxPos - 54, pyPos - 186, "?", "#ff9eb5", alpha * 0.9);
+      ctx.restore();
+    }
+
+    // STAGE 07 (140.15 – 166.15): PRE-CHORUS 2 — Moonlit Attic & RPG Memory Backpack Easter Egg!
+    function renderStage7(t, alpha) {
+      const lt = t - 140.15, p = clamp(lt / 26.0, 0, 1);
+      ctx.save(); ctx.globalAlpha = alpha;
+      drawBgPlate(IMGS.s9, lerp(1.06, 1.01, ease(p)), Math.round(lerp(-10, 12, p)), 0, 0.24);
+      drawPixelMotes(t, 42, 26, 0.8);
+
+      // 6-Slot RPG Backpack Card (Tourbillon-level emotional Easter Egg!)
+      const ba = easeOut(clamp(lt / 0.7, 0, 1)) * clamp((25.2 - lt) / 0.7, 0, 1);
+      const bx = 260, by = 188, bw = 820, bh = 540;
+      ctx.save(); ctx.globalAlpha = alpha * ba;
+      rrect(bx, by, bw, bh, 14);
+      ctx.fillStyle = "rgba(10, 15, 28, 0.93)"; ctx.fill();
+      ctx.lineWidth = 2.5; ctx.strokeStyle = "#ffd878"; ctx.stroke();
+
+      ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      ctx.font = '800 26px "PingFang SC", sans-serif'; ctx.fillStyle = "#ffd878";
+      ctx.fillText(`🎒 ${PLAYER_NAME}的行囊（已满）`, bx + 32, by + 44);
+
+      const slots = [
+        { name: "📋 疲惫的日程", st: "已塞满", col: "#8c9ab8", glow: false },
+        { name: "💬 没发出的消息", st: "草稿箱", col: "#8c9ab8", glow: false },
+        { name: "🎫 褪色的车票", st: "已过期", col: "#8c9ab8", glow: false },
+        { name: "🌧 沉默的晚风", st: "已积灰", col: "#8c9ab8", glow: false },
+        { name: "🚇 拥挤的地铁", st: "每日重复", col: "#8c9ab8", glow: false },
+        { name: "🌀 年少·小小风车", st: lt > 10 ? "✨ 正在发光旋转！" : "依然在转", col: "#ffd878", glow: true }
+      ];
+      for (let i = 0; i < slots.length; i++) {
+        const sl = slots[i];
+        const sx = bx + 32 + (i % 3) * 256, sy = by + 92 + Math.floor(i / 3) * 142;
+        rrect(sx, sy, 236, 120, 10);
+        ctx.fillStyle = sl.glow && lt > 10 ? "rgba(255, 216, 120, 0.20)" : "rgba(22, 30, 52, 0.90)";
+        ctx.fill();
+        ctx.lineWidth = sl.glow ? 2.5 : 1.5;
+        ctx.strokeStyle = sl.glow ? "#ffd878" : "rgba(255,255,255,0.18)";
+        ctx.stroke();
+        ctx.textAlign = "center";
+        ctx.font = '700 20px "PingFang SC", sans-serif'; ctx.fillStyle = sl.glow ? "#ffffff" : "#b4c0d8";
+        ctx.fillText(sl.name, sx + 118, sy + 44);
+        ctx.font = '600 16px "PingFang SC", sans-serif'; ctx.fillStyle = sl.col;
+        ctx.fillText(sl.st, sx + 118, sy + 84);
+      }
+
+      // Bottom emotional caption inside backpack
+      rrect(bx + 32, by + 394, bw - 64, 114, 10);
+      ctx.fillStyle = "rgba(255, 216, 120, 0.10)"; ctx.fill();
+      ctx.strokeStyle = "rgba(255, 216, 120, 0.45)"; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.textAlign = "left";
+      ctx.font = '700 22px "PingFang SC", sans-serif'; ctx.fillStyle = "#ffd878";
+      ctx.fillText("「小小风车 · 初心纪念品」", bx + 54, by + 432);
+      ctx.font = '500 19px "PingFang SC", sans-serif'; ctx.fillStyle = "#e6eefc";
+      ctx.fillText("走了那么远的路，还好口袋里还留着这阵风。", bx + 54, by + 474);
+      ctx.restore();
+
+      // Traveler standing by the right window, lighting up the pinwheel!
+      drawPixelPlayer(1380, 770, 7.2, t, "idle", alpha);
+      if (lt > 10) drawEmoteBubble(1324, 578, "!", "#ffd878", alpha * easeOut(clamp((lt - 10) / 0.5, 0, 1)));
+      ctx.restore();
+    }
+
+    // STAGE 08 (166.15 – 192.00): HIGH CHORUS 2 — Aurora Breakthrough · Unlocking Freedom Skill!
+    function renderStage8(t, alpha) {
+      const lt = t - 166.15, p = clamp(lt / 25.85, 0, 1);
+      ctx.save(); ctx.globalAlpha = alpha;
+      drawBgPlate(IMGS.s10, lerp(1.04, 1.14, ease(p)), Math.round(lerp(-30, 34, p)), 0, 0.12);
+      drawPixelMotes(t, 92, 240, 0.95);
+
+      const pxPos = Math.round(lerp(420, 1220, ease(p)));
+      const pyPos = Math.round(590 + Math.sin(t * 4.0) * 44);
+      drawPixelPlayer(pxPos - 58, pyPos + 4, 6.8, t - 0.14, "glide", alpha * 0.25, "#7ef4ff");
+      drawPixelPlayer(pxPos - 28, pyPos + 2, 6.8, t - 0.07, "glide", alpha * 0.48, "#ffd878");
+      drawPixelCloudPlatform(pxPos, pyPos + 10, 180, true);
+      drawPixelPlayer(pxPos, pyPos, 6.8, t, "glide", alpha);
+      drawPixelWindSpirit(pxPos + 380, pyPos - 100 + Math.sin(t * 4.5) * 35, t, 0, alpha);
+
+      if (lt >= 1.5 && lt <= 11.5) {
+        drawToastBanner(192, "🔓 解除束缚：[ 试图占有 ]", "不屑被谁所有，你该有多自由？", "#8cf8ff", "#8cf8ff",
+          alpha * easeOut(clamp((lt - 1.5) / 0.45, 0, 1)) * clamp((11.5 - lt) / 0.5, 0, 1));
+      } else if (lt >= 12.5 && lt <= 24.5) {
+        drawToastBanner(192, "⚡ 觉醒终极技能：如你般自由 (MAX)", "不再执着挽留 · 与微风并肩穿破极光云海！", "#ffd878", "#ffd878",
+          alpha * easeOut(clamp((lt - 12.5) / 0.45, 0, 1)) * clamp((24.5 - lt) / 0.5, 0, 1));
+      }
+      drawParallaxForegroundClouds(t, 290, "rgba(126, 244, 255, 0.30)", alpha);
+      ctx.restore();
+    }
+
+    // INTERLUDE 2 (192.00 – 216.56): INSTRUMENTAL BRIDGE — Cloud Stairway Reunion with Little Kid!
+    function renderInterlude2(t, alpha) {
+      const lt = t - 192.0, p = clamp(lt / 24.56, 0, 1);
+      ctx.save(); ctx.globalAlpha = alpha;
+      drawBgPlate(IMGS.s11, lerp(1.06, 1.01, ease(p)), Math.round(lerp(18, -18, p)), Math.round(lerp(14, -14, p)), 0.14);
+      drawPixelMotes(t, 64, 52, 0.9);
+
+      // Grown traveler ascending cloud steps toward the glowing Little Kid ("小小孩") waiting at the top!
+      const pxPos = Math.round(lerp(420, 960, ease(p)));
+      const pyPos = Math.round(lerp(810, 620, ease(p)));
+      drawPixelCloudPlatform(pxPos, pyPos + 8, 170, true);
+      drawPixelPlayer(pxPos, pyPos, 6.8, t, p < 0.88 ? "run" : "idle", alpha);
+
+      // Little Kid waiting warmly at the sunlit dawn summit!
+      const kx = 1140, ky = 610;
+      drawPixelCloudPlatform(kx, ky + 8, 160, true);
+      drawPixelPlayer(kx, ky, 5.4, t, "idle", alpha, null, true);
+
+      if (p > 0.65) {
+        const ra = easeOut(clamp((p - 0.65) / 0.15, 0, 1));
+        drawEmoteBubble(pxPos - 52, pyPos - 180, "♡", "#ffb8c6", alpha * ra);
+        drawEmoteBubble(kx + 46, ky - 148, "♡", "#ffd878", alpha * ra);
+        drawToastBanner(195, "✨ 重逢：[ 最初的小小孩 ]", "原来一直在云端等我的，是那个最纯净的自己", "#ffd878", "#ffd878", alpha * ra);
+      }
+      ctx.restore();
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // ACT III (216.56 – 334.45)
+    // ════════════════════════════════════════════════════════════════
+
+    // STAGE 09 (216.56 – 243.37): BRIDGE CLIMAX — Sunlit Sky Meadow · Singing Together!
+    function renderStage9(t, alpha) {
+      const lt = t - 216.56, p = clamp(lt / 26.81, 0, 1);
+      ctx.save(); ctx.globalAlpha = alpha;
+      drawBgPlate(IMGS.s12, lerp(1.02, 1.12, ease(p)), Math.round(lerp(34, -36, p)), 0, 0.10);
+      drawPixelMotes(t, 76, 130, 0.95);
+
+      const pxPos = Math.round(lerp(320, 1360, ease(p)));
+      const pyPos = 775;
+
+      // Expanding golden sound-wave rings as they sing ("欢唱吧呼唤他回来啊")!
+      for (let i = 0; i < 3; i++) {
+        const u = ((lt * 0.55 + i * 0.33) % 1 + 1) % 1;
+        ctx.save();
+        ctx.globalAlpha = alpha * (1 - u) * 0.72;
+        ctx.strokeStyle = i % 2 === 0 ? "#ffd878" : "#8cf8ff";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(pxPos + 70, pyPos - 90, 40 + u * 280, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Grown traveler & Little Kid running joyfully side-by-side!
+      drawPixelPlayer(pxPos, pyPos, 6.8, t, "run", alpha);
+      drawPixelPlayer(pxPos + 130, pyPos + 8, 5.4, t + 0.2, "run", alpha, null, true);
+      drawEmoteBubble(pxPos - 52, pyPos - 182, "♪", "#ffd878", alpha * 0.95);
+      drawEmoteBubble(pxPos + 178, pyPos - 140, "♪", "#8cf8ff", alpha * 0.95);
+
+      if (lt >= 1.2 && lt <= 12.0) {
+        drawToastBanner(192, "🎶 欢唱共鸣 · 呼唤微风归来", "小小孩听见它在笑呀 · 欢唱吧呼唤他回来啊", "#ffd878", "#ffd878",
+          alpha * easeOut(clamp((lt - 1.2) / 0.45, 0, 1)) * clamp((12.0 - lt) / 0.5, 0, 1));
+      }
+      ctx.restore();
+    }
+
+    // STAGE 10 (243.37 – 272.00): FINAL CHORUS — Grand Panoramic Sea of Wind (TRUE ENDING!)
+    function renderStage10(t, alpha) {
+      const lt = t - 243.37, p = clamp(lt / 28.63, 0, 1);
+      ctx.save(); ctx.globalAlpha = alpha;
+      drawBgPlate(IMGS.s13, lerp(1.03, 1.15, ease(p)), Math.round(lerp(-36, 36, p)), 0, 0.08);
+      drawPixelMotes(t, 110, 180, 1.0);
+
+      // Soaring together across the boundless golden-turquoise Sea of Wind!
+      const pxPos = Math.round(lerp(420, 1140, ease(p)));
+      const pyPos = Math.round(560 + Math.sin(t * 3.0) * 38);
+
+      drawPixelPlayer(pxPos - 52, pyPos + 4, 6.8, t - 0.12, "glide", alpha * 0.28, "#ffd878");
+      drawPixelCloudPlatform(pxPos + 55, pyPos + 12, 290, true);
+      drawPixelPlayer(pxPos, pyPos, 6.8, t, "glide", alpha);
+      drawPixelPlayer(pxPos + 120, pyPos + 6, 5.4, t + 0.15, "glide", alpha, null, true);
+      drawPixelWindSpirit(pxPos + 400, pyPos - 95 + Math.sin(t * 4) * 34, t, 0, alpha);
+
+      if (lt >= 1.5 && lt <= 26.5) {
+        const ta = easeOut(clamp((lt - 1.5) / 0.6, 0, 1)) * clamp((26.5 - lt) / 0.8, 0, 1);
+        drawToastBanner(190, "🏆 TRUE ENDING · 找到风的海", "学会如你般自由 · 心怀小小风车，处处皆是风之海", "#ffd878", "#ffd878", alpha * ta);
+      }
+      drawParallaxForegroundClouds(t, 220, "rgba(255, 236, 196, 0.36)", alpha);
+      ctx.restore();
+    }
+
+    // OUTRO (272.00 – 334.45): Full-Circle Sunset Wooden Pier + 5:04.62 Bloom GAME CLEAR Card!
+    function renderOutro(t, alpha) {
+      const lt = t - 272.0, p = clamp(lt / 62.45, 0, 1);
+      ctx.save(); ctx.globalAlpha = alpha;
+      drawBgPlate(IMGS.s1, lerp(1.08, 1.01, ease(p)), Math.round(lerp(18, -14, p)), 0, 0.18);
+      drawPixelMotes(t, 48, 28, 0.85);
+
+      // Traveler returns peacefully to the opening sunset pier (272–304s)
+      if (t < 304.6) {
+        const oa = clamp((304.6 - t) / 1.4, 0, 1);
+        drawPixelPlayer(910, 855, 7, t, "idle", alpha * oa);
+        drawPixelWindSpirit(lerp(1160, 1480, ease(clamp(lt / 28, 0, 1))), 480 + Math.sin(t * 2.2) * 24, t, 0, alpha * oa * 0.85);
+        if (lt >= 2.0 && lt <= 14.0) {
+          drawToastBanner(220, "✔ 放下执念 · 拥抱微风", "不再害怕告别 · 因为风一直都在心里", "#8cf8ff", "#8cf8ff",
+            alpha * easeOut(clamp((lt - 2.0) / 0.6, 0, 1)) * clamp((14.0 - lt) / 0.8, 0, 1));
+        }
+      }
+
+      // 304.6s (5:04.62 musical bloom) – 332.0s: Full-Circle GAME CLEAR Settlement Card!
+      if (t >= 304.6) {
+        const ga = easeOut(clamp((t - 304.6) / 1.2, 0, 1)) * clamp((332.5 - t) / 1.8, 0, 1);
+        ctx.save(); ctx.globalAlpha = alpha * ga;
+        rrect(W / 2 - 420, 260, 840, 410, 16);
+        ctx.fillStyle = "rgba(10, 15, 28, 0.92)"; ctx.fill();
+        ctx.lineWidth = 2.5; ctx.strokeStyle = "#ffd878"; ctx.stroke();
+
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.font = '700 20px "DIN Alternate", "PingFang SC", sans-serif'; ctx.fillStyle = "#8cf8ff";
+        ctx.fillText("GAME CLEAR · 逐风旅途通关结算", W / 2, 316);
+        ctx.font = '800 54px "PingFang SC", sans-serif'; ctx.fillStyle = "#ffd878";
+        ctx.fillText("风  之  海", W / 2, 386);
+
+        ctx.font = '600 24px "PingFang SC", sans-serif'; ctx.fillStyle = "#faf8f4";
+        ctx.fillText(`通关玩家：${PLAYER_NAME}（LV.01 → LV.MAX）`, W / 2, 468);
+        ctx.fillText("最终信物：[ 小小风车 ]  ·  记忆收集：100%", W / 2, 518);
+        ctx.fillStyle = "#ffd878";
+        ctx.fillText("解锁真结局：学会如你般自由，你本身就是风的海", W / 2, 590);
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+
+    // ── Master 13-Stage Timeline (0.00 – 334.45s) ──
+    const STAGES = [
+      { id: "s0",   start: 0.00,   end: 15.91,  fn: renderStage0 },
+      { id: "s1",   start: 15.91,  end: 33.08,  fn: renderStage1 },
+      { id: "s2",   start: 33.08,  end: 39.36,  fn: renderStage2 },
+      { id: "s3",   start: 39.36,  end: 51.74,  fn: renderStage3 },
+      { id: "s4",   start: 51.74,  end: 77.76,  fn: renderStage4 },
+      { id: "s5",   start: 77.76,  end: 102.00, fn: renderStage5 },
+      { id: "int1", start: 102.00, end: 115.49, fn: renderInterlude1 },
+      { id: "s6",   start: 115.49, end: 140.15, fn: renderStage6 },
+      { id: "s7",   start: 140.15, end: 166.15, fn: renderStage7 },
+      { id: "s8",   start: 166.15, end: 192.00, fn: renderStage8 },
+      { id: "int2", start: 192.00, end: 216.56, fn: renderInterlude2 },
+      { id: "s9",   start: 216.56, end: 243.37, fn: renderStage9 },
+      { id: "s10",  start: 243.37, end: 272.00, fn: renderStage10 },
+      { id: "out",  start: 272.00, end: 335.00, fn: renderOutro }
+    ];
+    const XFADE = 0.45;
+
+    window.renderAt = function (t) {
+      ctx.fillStyle = "#0a1020";
+      ctx.fillRect(0, 0, W, H);
+
+      for (let i = 0; i < STAGES.length; i++) {
+        const st = STAGES[i];
+        if (t < st.start - XFADE || t > st.end + XFADE) continue;
+        let a = 1;
+        if (i > 0 && t < st.start + XFADE) a = ease((t - (st.start - XFADE)) / (XFADE * 2));
+        else if (i < STAGES.length - 1 && t > st.end - XFADE) a = 1 - ease((t - (st.end - XFADE)) / (XFADE * 2));
+        if (a > 0.005) st.fn(t, a);
+      }
+
+      // Diegetic Pixel Cloud-Curtain Wipes on major musical transitions
+      drawCloudWipe(t, 15.91,  "rgba(255, 244, 224, 0.94)", "rgba(255, 212, 146, 0.65)");
+      drawCloudWipe(t, 33.08,  "rgba(218, 250, 255, 0.92)", "rgba(126, 244, 255, 0.62)");
+      drawCloudWipe(t, 39.36,  "rgba(42, 54, 96, 0.90)",    "rgba(255, 178, 200, 0.52)");
+      drawCloudWipe(t, 51.74,  "rgba(255, 236, 190, 0.92)", "rgba(255, 200, 120, 0.60)");
+      drawCloudWipe(t, 77.76,  "rgba(200, 248, 255, 0.92)", "rgba(126, 244, 255, 0.62)");
+      drawCloudWipe(t, 115.49, "rgba(38, 48, 78, 0.92)",    "rgba(120, 148, 196, 0.55)");
+      drawCloudWipe(t, 166.15, "rgba(190, 250, 255, 0.94)", "rgba(255, 224, 150, 0.64)");
+      drawCloudWipe(t, 216.56, "rgba(255, 246, 218, 0.92)", "rgba(255, 212, 140, 0.62)");
+      drawCloudWipe(t, 243.37, "rgba(220, 252, 255, 0.94)", "rgba(255, 226, 156, 0.66)");
+
+      drawGameHUD(t);
+      drawLyrics(t);
+
+      // Gentle fade to deep twilight at end (332.5–334.45s)
+      if (t > 332.5) {
+        ctx.fillStyle = `rgba(10, 14, 28, ${ease((t - 332.5) / 1.95) * 0.78})`;
+        ctx.fillRect(0, 0, W, H);
+      }
+      return canvas.toDataURL("image/jpeg", 0.92);
+    };
+
+    window.sceneReady = false;
+    loadAll().then(() => { window.sceneReady = true; }).catch((e) => console.error(e));
+  </script>
+</body>
+</html>

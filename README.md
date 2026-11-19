@@ -8,9 +8,13 @@
 Skills/
 ├── video/                              # 🎬 视频制作类 Skills
 │   ├── music-mv/                       # 🎵 音乐 MV（按歌手分目录，每首歌独立文件夹）
-│   │   └── eason-chan/                 # 陈奕迅
-│   │       └── tourbillon-mv/          # 《陀飞轮》人生闯关 RPG 像素风 1080p MV
-│   │           ├── SKILL.md            # Agent Skill 定义与 17 阶段速查表
+│   │   ├── eason-chan/                 # 陈奕迅
+│   │   │   └── tourbillon-mv/          # 《陀飞轮》人生闯关 RPG 像素风 1080p MV
+│   │   │       ├── SKILL.md            # Agent Skill 定义与 17 阶段速查表
+│   │   │       └── kit/                # 可直接运行的一键渲染代码包
+│   │   └── hua-chenyu/                 # 华晨宇
+│   │       └── wind-sea-mv/            # 《风之海》云海逐风 RPG 像素风 1080p MV
+│   │           ├── SKILL.md            # Agent Skill 定义与 14 阶段速查表
 │   │           └── kit/                # 可直接运行的一键渲染代码包
 │   └── short-video/                    # 📱 短视频 / 混剪 / 动画类（预留）
 └── tools/                              # 🛠️ 其他功能类 Skills（预留）
@@ -34,3 +38,4 @@ Skills/
 | 分类 | 名称 | 路径 | 说明 |
 |---|---|---|---|
 | 🎬 音乐 MV · 陈奕迅 | `tourbillon-mv` | [video/music-mv/eason-chan/tourbillon-mv](video/music-mv/eason-chan/tourbillon-mv) | 陈奕迅《陀飞轮》「人生闯关 RPG」像素风 1080p MV，支持一键出片与自定义主角名 |
+| 🎬 音乐 MV · 华晨宇 | `wind-sea-mv` | [video/music-mv/hua-chenyu/wind-sea-mv](video/music-mv/hua-chenyu/wind-sea-mv) | 华晨宇《风之海》「云海逐风 RPG」像素风 1080p MV，14 阶段三幕剧，支持一键出片与自定义主角名 |

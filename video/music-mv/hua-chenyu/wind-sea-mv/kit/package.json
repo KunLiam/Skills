@@ -1,0 +1,15 @@
+{
+  "name": "wind-sea-game-mv",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "华晨宇《风之海》像素 RPG 闯关 MV 一键生成工具包",
+  "scripts": {
+    "render": "node render.mjs --mode full",
+    "preview": "node render.mjs --mode preview",
+    "keyframes": "node render.mjs --mode keyframes"
+  },
+  "dependencies": {
+    "puppeteer-core": "^25.18.1"
+  }
+}
