@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>沙龙 — 35mm 人生摄影微游戏合集 32-bit 像素 MV</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 1920px; height: 1080px; overflow: hidden; background: #0c0a09; }
+    canvas { display: block; width: 1920px; height: 1080px; image-rendering: pixelated; }
+  </style>
+</head>
+<body>
+  <canvas id="c" width="1920" height="1080"></canvas>
+  <script src="lyrics.js"></script>
+  <script>
+    const W = 1920, H = 1080;
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d");
+    ctx.imageSmoothingEnabled = false;
+
+    const params = new URLSearchParams(location.search);
+    const PLAYER_NAME = params.get("player") || "坤仔";
+
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const lerp = (a, b, t) => a + (b - a) * t;
+    const ease = (t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    const easeOut = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
+    const rnd = (s) => { const x = Math.sin(s * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+
+    const ASSETS = {
+      s01: "assets_px/px_salon_s01_camera_shop.png",
+      s02: "assets_px/px_salon_s02_tram_sunset.png",
+      s03: "assets_px/px_salon_s03_rainy_arcade.png",
+      s04: "assets_px/px_salon_s04_sunset_overpass.png",
+      s05: "assets_px/px_salon_s05_harbor_promenade.png",
+      s06: "assets_px/px_salon_s06_rooftop_bokeh.png",
+      s07: "assets_px/px_salon_s07_sunlit_alley.png",
+      s08: "assets_px/px_salon_s08_night_photo_shop.png",
+      s09: "assets_px/px_salon_s09_ferris_fireworks.png",
+      s10: "assets_px/px_salon_s10_clocktower_stars.png",
+      s11: "assets_px/px_salon_s11_mountain_summit.png",
+      s12: "assets_px/px_salon_s12_peak_dawn_harbor.png",
+      s13: "assets_px/px_salon_s13_warm_sanctuary.png",
+      s14: "assets_px/px_salon_s14_film_darkroom.png",
+      s15: "assets_px/px_salon_s15_grand_theater.png",
+      s16: "assets_px/px_salon_s16_misty_lightning_city.png",
+      s17: "assets_px/px_salon_s17_golden_coast_road.png",
+      s18: "assets_px/px_salon_s18_salon_gallery.png",
+      s19: "assets_px/px_salon_s19_starlight_ferry.png",
+      s20: "assets_px/px_salon_s20_vintage_cinema.png"
+    };
+    const IMGS = {};
+    window.__ASSETS_READY = false;
+    function loadAllAssets() {
+      return Promise.all(Object.entries(ASSETS).map(([k, src]) => new Promise((res, rej) => {
+        const img = new Image();
+        img.onload = () => { IMGS[k] = img; res(); };
+        img.onerror = rej;
+        img.src = src;
+      }))).then(() => { window.__ASSETS_READY = true; });
+    }
+
+    function rrect(x, y, w, h, r = 8) {
+      x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h);
+      ctx.beginPath();
+      ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+
+    // Draw image with optional simulated optical defocus (blurPx)
+    function drawBgPlate(img, zoom = 1.05, panX = 0, panY = 0, shade = 0.14, blurPx = 0) {
+      if (!img) return;
+      ctx.save();
+      ctx.imageSmoothingEnabled = blurPx > 0.5;
+      if (blurPx > 0.5) ctx.filter = `blur(${blurPx.toFixed(1)}px)`;
+      const ir = img.width / img.height, cr = W / H;
+      let dw, dh;
+      if (ir > cr) { dh = H * zoom; dw = dh * ir; }
+      else { dw = W * zoom; dh = dw / ir; }
+      ctx.drawImage(img, Math.round((W - dw) / 2 + panX), Math.round((H - dh) / 2 + panY), Math.round(dw), Math.round(dh));
+      ctx.filter = "none";
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, `rgba(10, 8, 14, ${shade + 0.08})`);
+      g.addColorStop(0.55, `rgba(10, 8, 14, ${shade * 0.3})`);
+      g.addColorStop(1, `rgba(8, 6, 12, ${shade + 0.34})`);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+
+    // ── REAL Photo-Embedded Polaroid Card (Displays actual scene thumbnail inside!) ──
+    function drawPhotoPolaroid(cx, cy, w, h, img, caption, dateTag, rot = 0, alpha = 1, devProg = 1) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(Math.round(cx), Math.round(cy));
+      ctx.rotate(rot);
+      // Drop shadow
+      ctx.fillStyle = "rgba(6, 4, 10, 0.55)";
+      ctx.fillRect(-w / 2 + 8, -h / 2 + 10, w, h);
+      // Warm vintage Polaroid paper frame
+      ctx.fillStyle = "#f7f1e3";
+      ctx.fillRect(-w / 2, -h / 2, w, h);
+      ctx.strokeStyle = "#d9cdb8"; ctx.lineWidth = 2;
+      ctx.strokeRect(-w / 2, -h / 2, w, h);
+      // Photo aperture
+      const pad = Math.round(w * 0.065);
+      const pw = w - pad * 2;
+      const ph = Math.round(h * 0.70);
+      const px = -w / 2 + pad, py = -h / 2 + pad;
+      ctx.fillStyle = "#16121a";
+      ctx.fillRect(px, py, pw, ph);
+      if (img && devProg > 0.02) {
+        ctx.save();
+        ctx.globalAlpha = alpha * clamp(devProg, 0, 1);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, px, py, pw, ph);
+        ctx.restore();
+      }
+      // Subtle developing chemical sheen if devProg < 1
+      if (devProg < 1) {
+        ctx.fillStyle = `rgba(240, 224, 200, ${(1 - devProg) * 0.85})`;
+        ctx.fillRect(px, py, pw, ph);
+      }
+      // Handwritten caption on bottom margin (auto-fit inside pw so it never overflows!)
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.font = `800 ${Math.max(15, Math.round(w * 0.064))}px "PingFang SC", sans-serif`;
+      ctx.fillStyle = "#262024";
+      ctx.fillText(caption, 0, py + ph + Math.round((h - ph - pad) * 0.36), pw);
+      if (dateTag) {
+        ctx.font = `700 ${Math.max(12, Math.round(w * 0.044))}px "DIN Alternate", "PingFang SC", sans-serif`;
+        ctx.fillStyle = "#8a7562";
+        ctx.fillText(dateTag, 0, py + ph + Math.round((h - ph - pad) * 0.74), pw);
+      }
+      ctx.restore();
+    }
+
+    // ── First-Person SLR Optical Viewfinder Overlay (Split-Prism + Focus Ring!) ──
+    function drawSLRViewfinder(t, focusVal, targetVal, locked, hint, countdown = null) {
+      ctx.save();
+      // Subtle dark viewfinder mask corners
+      ctx.strokeStyle = "rgba(255, 240, 210, 0.45)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(120, 130, W - 240, H - 260);
+      // Rule of thirds hairline grid
+      ctx.strokeStyle = "rgba(255, 240, 210, 0.14)";
+      ctx.beginPath();
+      ctx.moveTo(120 + (W - 240) / 3, 130); ctx.lineTo(120 + (W - 240) / 3, H - 130);
+      ctx.moveTo(120 + (W - 240) * 2 / 3, 130); ctx.lineTo(120 + (W - 240) * 2 / 3, H - 130);
+      ctx.moveTo(120, 130 + (H - 260) / 3); ctx.lineTo(W - 120, 130 + (H - 260) / 3);
+      ctx.moveTo(120, 130 + (H - 260) * 2 / 3); ctx.lineTo(W - 120, 130 + (H - 260) * 2 / 3);
+      ctx.stroke();
+
+      // Center Split-Prism Focusing Circle (Classic Leica/FM2 feel!)
+      const cx = W / 2, cy = H / 2 - 20;
+      const col = locked ? "#68f29c" : "#ffd27d";
+      ctx.strokeStyle = col; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(cx, cy, 86, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, 34, 0, Math.PI * 2); ctx.stroke();
+      // Split-prism horizontal alignment indicator
+      const misalign = Math.round((focusVal - targetVal) * 42);
+      ctx.fillStyle = col;
+      ctx.fillRect(cx - 24 + misalign, cy - 12, 48, 4);
+      ctx.fillRect(cx - 24 - misalign, cy + 8, 48, 4);
+
+      // Focus Ring Scale Bar at bottom of viewfinder
+      const bx = W / 2 - 260, by = H - 205, bw = 520;
+      rrect(bx - 16, by - 26, bw + 32, 62, 10);
+      ctx.fillStyle = "rgba(12, 10, 16, 0.86)"; ctx.fill();
+      ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
+      // Target green sweet spot
+      const tx = bx + Math.round(targetVal * bw);
+      ctx.fillStyle = "rgba(104, 242, 156, 0.35)";
+      ctx.fillRect(tx - 24, by - 8, 48, 22);
+      // Ticks
+      for (let i = 0; i <= 20; i++) {
+        const x = bx + Math.round((i / 20) * bw);
+        ctx.fillStyle = "rgba(255,255,255,0.45)";
+        ctx.fillRect(x, by - (i % 5 === 0 ? 10 : 4), 2, i % 5 === 0 ? 20 : 10);
+      }
+      // Moving Focus Needle
+      const fx = bx + Math.round(clamp(focusVal, 0, 1) * bw);
+      ctx.fillStyle = locked ? "#68f29c" : "#ff6b6b";
+      ctx.fillRect(fx - 4, by - 16, 8, 34);
+
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.font = '800 18px "DIN Alternate", "PingFang SC", sans-serif';
+      ctx.fillStyle = col;
+      const cdTxt = countdown !== null ? `  |  ⏱ ${countdown.toFixed(1)}s` : "";
+      ctx.fillText(`${hint}${cdTxt}`, W / 2, by + 22);
+      ctx.restore();
+    }
+
+    // ── Classic Pixel RPG Dialogue / Choice Box (Undertale / JRPG Style!) ──
+    function drawRPGDialog(speaker, line1, line2, choices = null, selectedIdx = 0, alpha = 1) {
+      ctx.save(); ctx.globalAlpha = alpha;
+      const bw = 1040, bh = choices ? 256 : 168;
+      const bx = Math.round(W / 2 - bw / 2), by = H - 385;
+      rrect(bx, by, bw, bh, 12);
+      ctx.fillStyle = "rgba(12, 10, 18, 0.94)"; ctx.fill();
+      ctx.lineWidth = 3; ctx.strokeStyle = "#fff4df"; ctx.stroke();
+      // Speaker badge
+      rrect(bx + 24, by - 22, 260, 42, 8);
+      ctx.fillStyle = "#ffd27d"; ctx.fill();
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.font = '800 20px "PingFang SC", sans-serif'; ctx.fillStyle = "#16121a";
+      ctx.fillText(speaker, bx + 154, by - 1);
+
+      ctx.textAlign = "left";
+      ctx.font = '700 26px "PingFang SC", sans-serif'; ctx.fillStyle = "#ffffff";
+      ctx.fillText(line1, bx + 38, by + 56);
+      if (line2) {
+        ctx.font = '500 22px "PingFang SC", sans-serif'; ctx.fillStyle = "#d8cfc2";
+        ctx.fillText(line2, bx + 38, by + 102);
+      }
+      if (choices) {
+        choices.forEach((ch, i) => {
+          const cy = by + 150 + i * 42;
+          const isSel = i === selectedIdx;
+          if (isSel) {
+            rrect(bx + 32, cy - 18, bw - 64, 36, 6);
+            ctx.fillStyle = "rgba(255, 210, 125, 0.22)"; ctx.fill();
+          }
+          ctx.font = isSel ? '800 22px "PingFang SC", sans-serif' : '600 20px "PingFang SC", sans-serif';
+          ctx.fillStyle = isSel ? "#ffd27d" : "#8c847a";
+          ctx.fillText(`${isSel ? "▶ " : "   "}${ch}`, bx + 48, cy);
+        });
+      }
+      ctx.restore();
+    }
+
+    function drawDustMotes(t, count = 48, speed = 30, alpha = 0.85, c1 = "#ffd98a", c2 = "#fff2cc") {
+      ctx.save();
+      for (let i = 0; i < count; i++) {
+        const s = i * 31.7 + 5.1;
+        const x = Math.round(((rnd(s) * W - t * (speed * (0.4 + rnd(s + 1) * 0.8))) % (W + 40) + W + 40) % (W + 40) - 20);
+        const y = Math.round(((rnd(s + 2) * H - t * (8 + rnd(s + 3) * 16) + Math.sin(t * 1.6 + i) * 12) % H + H) % H);
+        const sz = rnd(s + 4) > 0.72 ? 6 : 4;
+        ctx.globalAlpha = alpha * (0.35 + 0.65 * Math.abs(Math.sin(t * 2.1 + i * 1.3)));
+        ctx.fillStyle = i % 3 === 0 ? c2 : c1;
+        ctx.fillRect(x, y, sz, sz);
+      }
+      ctx.restore();
+    }
+
+    function drawPixelBurst(cx, cy, prog, c1 = "#ffd27d", c2 = "#8ce8ff") {
+      if (prog <= 0 || prog >= 1) return;
+      ctx.save(); ctx.globalAlpha = 1 - prog;
+      for (let i = 0; i < 16; i++) {
+        const ang = (i / 16) * Math.PI * 2 + prog * 0.5;
+        const dist = easeOut(prog) * (54 + (i % 3) * 36);
+        ctx.fillStyle = i % 2 === 0 ? c1 : c2;
+        ctx.fillRect(Math.round(cx + Math.cos(ang) * dist) - 4, Math.round(cy + Math.sin(ang) * dist) - 4, 8, 8);
+      }
+      ctx.restore();
+    }
+
+    function drawPixelPhotographer(cx, footY, scale, t, pose = "walk", alpha = 1) {
+      ctx.save(); ctx.globalAlpha = alpha;
+      const s = scale;
+      const bob = pose === "run" ? Math.round(Math.abs(Math.sin(t * 12)) * -8)
+                : pose === "walk" ? Math.round(Math.abs(Math.sin(t * 6)) * -4) : 0;
+      const x = Math.round(cx), y = Math.round(footY + bob);
+      const px = (gx, gy, gw, gh, col) => {
+        ctx.fillStyle = col;
+        ctx.fillRect(Math.round(x + gx * s), Math.round(y + gy * s), Math.round(gw * s), Math.round(gh * s));
+      };
+      const st = pose === "run" ? Math.round(Math.sin(t * 12) * 3.5) : pose === "walk" ? Math.round(Math.sin(t * 6) * 2) : 0;
+      px(-4 + st, -6, 3, 6, "#273146"); px(1 - st, -6, 3, 6, "#1f2738");
+      px(-4 + st, -1, 4, 1.5, "#f5efe6"); px(1 - st, -1, 4, 1.5, "#e6ddd0");
+      px(-5.5, -14.5, 11, 9, "#4d5c4c"); px(-3.5, -14, 7, 8, "#f3eadb");
+      px(-5.5, -13.5, 2, 7.5, "#8b5a34");
+      if (pose === "shoot") {
+        px(2.5, -20.5, 5.5, 3.8, "#1e222b"); px(3.2, -20.0, 4.1, 1.1, "#d8dee8");
+        px(6.8, -19.2, 2.2, 2.2, "#46b8e8");
+      } else {
+        px(-2.2, -11.5, 4.6, 3.2, "#1c2028"); px(-0.8, -10.3, 2.0, 2.0, "#46b8e8");
+      }
+      px(-4.5, -23.5, 9, 8.8, "#f7d4b6");
+      px(-5.2, -25.2, 10.4, 4.2, "#1b1e28"); px(-5.2, -21.5, 2.2, 4.0, "#1b1e28");
+      px(0.6, -19.6, 1.4, 1.8, "#161820"); px(3.0, -19.6, 1.4, 1.8, "#161820");
+      px(-7.2, -14.8, 3.6, 2.2, "#e8984c"); px(-10.0, -14.0 + Math.round(Math.sin(t * 9)), 3.2, 2.0, "#f2b263");
+      ctx.restore();
+    }
+
+    function drawMuseFigure(cx, footY, scale, t, alpha = 1) {
+      ctx.save(); ctx.globalAlpha = alpha;
+      const s = scale, x = Math.round(cx), y = Math.round(footY + Math.round(Math.sin(t * 3) * 2));
+      const px = (gx, gy, gw, gh, col) => {
+        ctx.fillStyle = col;
+        ctx.fillRect(Math.round(x + gx * s), Math.round(y + gy * s), Math.round(gw * s), Math.round(gh * s));
+      };
+      px(-3.2, -5.5, 2.5, 5.5, "#3a2e38"); px(0.7, -5.5, 2.5, 5.5, "#3a2e38");
+      px(-5, -14, 10, 9.5, "#d88a76"); px(-3, -13.5, 6, 8, "#f8efe4");
+      px(-4, -22.5, 8, 8.2, "#fce0c8");
+      px(-5.2, -24.2, 10.4, 4.5, "#2b1f24"); px(-5.4, -20.0, 2.2, 7.5, "#2b1f24"); px(3.2, -20.0, 2.2, 7.5, "#2b1f24");
+      px(-2.2, -19.0, 1.3, 1.6, "#1b151a"); px(0.5, -19.0, 1.3, 1.6, "#1b151a");
+      ctx.restore();
+    }
+
+    function drawShutterFlash(t, triggerT, peak = 0.78) {
+      const dt = t - triggerT;
+      if (dt < 0 || dt > 0.28) return;
+      ctx.save();
+      ctx.fillStyle = `rgba(255, 250, 238, ${Math.pow(1 - dt / 0.28, 2) * peak})`;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+
+    // ── Compact Top Bar (Clean, Non-Intrusive, High-Immersion!) ──
+    function drawCompactHUD(t) {
+      if (t < 14.7 || t > 253.0) return;
+      const a = easeOut(clamp((t - 14.7) / 0.5, 0, 1)) * clamp((253.0 - t) / 0.8, 0, 1);
+      ctx.save(); ctx.globalAlpha = a;
+      const prog = clamp((t - 14.96) / (233.62 - 14.96), 0, 1);
+      const expCount = Math.min(36, Math.max(1, Math.floor(lerp(1, 36.9, prog))));
+
+      const modes = [
+        [28.44,  "🔍 线索 1/4 · 叮叮车神秘背影"],
+        [40.64,  "🔍 线索 2/4 · 雨巷探照寻踪"],
+        [57.17,  "🔍 线索 3/4 · 天桥心跳抉择"],
+        [70.62,  "🔍 线索 4/4 · 维港记忆复苏"],
+        [85.87,  "✨ 真相揭晓 · 天台星轨长曝光"],
+        [105.45, "📷 重拾热爱 · 老街与小轮街拍"],
+        [128.19, "🎒 危机彩蛋 · 菲林售罄翻口袋"],
+        [141.61, "🎆 副歌高燃 · 烟火节拍快门"],
+        [156.84, "⚔ 终极对决 · 衰老弹幕战斗框"],
+        [181.00, "📖 人生高光 · 沙龙相簿 7 连翻页"],
+        [200.90, "🔴 暗房奇观 · 6 张实景照片显影"],
+        [214.06, "🎭 生命千样 · 艺术四章拼图"],
+        [233.62, "🌅 满卷冲刺 · 第 36 张底片倒计时"],
+        [999.00, "🏛 终极答案 · 沙龙个人摄影展"]
+      ];
+      let modeTxt = modes[0][1];
+      for (const [et, txt] of modes) { if (t < et) { modeTxt = txt; break; } }
+
+      // Left Camera Film Counter
+      rrect(36, 22, 340, 62, 10);
+      ctx.fillStyle = "rgba(12, 10, 18, 0.86)"; ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = "rgba(255, 210, 125, 0.72)"; ctx.stroke();
+      ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      ctx.font = '800 20px "PingFang SC", sans-serif'; ctx.fillStyle = "#fff8ee";
+      ctx.fillText(`📷 ${PLAYER_NAME}`, 56, 53);
+      ctx.textAlign = "right";
+      ctx.font = '800 20px "DIN Alternate", monospace'; ctx.fillStyle = expCount >= 36 ? "#68f29c" : "#ffd27d";
+      ctx.fillText(`🎞 ${String(expCount).padStart(2, "0")}/36`, 356, 53);
+
+      // Right Current Mini-Game Title
+      rrect(W - 466, 22, 430, 62, 10);
+      ctx.fillStyle = "rgba(12, 10, 18, 0.86)"; ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = "rgba(140, 232, 255, 0.65)"; ctx.stroke();
+      ctx.textAlign = "right";
+      ctx.font = '800 19px "PingFang SC", sans-serif'; ctx.fillStyle = "#ffd27d";
+      ctx.fillText(modeTxt, W - 56, 53);
+      ctx.restore();
+    }
+
+    function drawLyrics(t) {
+      if (!window.LYRICS || t > 254.0) return;
+      for (const item of window.LYRICS) {
+        if (t >= item.t && t <= item.end) {
+          const a = easeOut(clamp((t - item.t) / 0.22, 0, 1)) * clamp((item.end - t) / 0.25, 0, 1);
+          ctx.save(); ctx.globalAlpha = a;
+          ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.font = '700 34px "PingFang SC", "Hiragino Sans GB", sans-serif';
+          const tw = ctx.measureText(item.text).width;
+          rrect(W / 2 - tw / 2 - 34, H - 90, tw + 68, 52, 12);
+          ctx.fillStyle = "rgba(12, 10, 16, 0.84)"; ctx.fill();
+          ctx.strokeStyle = "rgba(255, 210, 125, 0.40)"; ctx.lineWidth = 1.5; ctx.stroke();
+          ctx.fillStyle = "#fff8ee";
+          ctx.fillText(item.text, W / 2, H - 64);
+          ctx.restore();
+          break;
+        }
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // 14 UNIQUE INTERACTIVE MINI-GAMES SYNCED TO SALON LYRICS
+    // ════════════════════════════════════════════════════════════════
+
+    // 0. INTRO (0.00 – 14.96): MYSTERY HOOK — An Anonymous Letter from 10 Years Later & Half a Torn Photo!
+    function renderIntro(t) {
+      const p = clamp(t / 14.96, 0, 1);
+      drawBgPlate(IMGS.s01, lerp(1.09, 1.01, ease(p)), Math.round(lerp(-16, 16, p)), 0, 0.22);
+      drawDustMotes(t, 48, 18, 0.85);
+
+      if (t < 6.4) {
+        // Immediate 5-second Suspense Hook: Torn Photo + Mysterious Letter!
+        const ha = easeOut(clamp(t / 0.65, 0, 1)) * clamp((6.4 - t) / 0.6, 0, 1);
+        ctx.save(); ctx.globalAlpha = ha;
+        // Left: Torn mysterious polaroid with "?" silhouette
+        drawPhotoPolaroid(560, 485, 340, 390, IMGS.s02, "？？？ · 2016.09", "（照片被撕掉了一半…）", -0.07, ha, 0.45);
+        // Right: Urgent Mystery Case Letter
+        rrect(810, 275, 760, 410, 16);
+        ctx.fillStyle = "rgba(14, 11, 18, 0.94)"; ctx.fill();
+        ctx.lineWidth = 2.5; ctx.strokeStyle = "#ffd27d"; ctx.stroke();
+        ctx.textAlign = "left"; ctx.textBaseline = "middle";
+        ctx.font = '800 20px "DIN Alternate", "PingFang SC", sans-serif'; ctx.fillStyle = "#ff8fa0";
+        ctx.fillText("✉  匿名来信 · 寄自十年后的自己", 855, 330);
+        ctx.font = '800 46px "PingFang SC", sans-serif'; ctx.fillStyle = "#ffd27d";
+        ctx.fillText("沙 龙 ： 第 36 张 底 片", 855, 405);
+        ctx.font = '600 22px "PingFang SC", sans-serif'; ctx.fillStyle = "#f4ece0";
+        ctx.fillText("「如果有一天，你快要忘了她笑起来的样子——」", 855, 486);
+        ctx.fillText("「带着这台 35mm 相机，找齐 4 个失落的时空线索。」", 855, 534);
+        ctx.font = '700 21px "PingFang SC", sans-serif'; ctx.fillStyle = "#8ce8ff";
+        ctx.fillText("🔍 悬念任务：揭开第 36 张未曝光底片的秘密！", 855, 616);
+        ctx.restore();
+      } else {
+        drawPixelPhotographer(960, 845, 7.2, t, t > 11.5 ? "shoot" : "idle", 1);
+        drawRPGDialog(
+          `🔍 档案开启 · ${PLAYER_NAME}（胶片侦探）`,
+          "「叮！装入神秘旧胶卷（剩余 36 格），雷达侦测到首个背影！」",
+          "📍 线索 ① 坐标锁定：17:40 夕阳叮叮车站 —— 她正准备转身离开！",
+          ["▶ [ 立刻追上去！开启第一视角光学对焦 ]"],
+          0, easeOut(clamp((t - 6.5) / 0.5, 0, 1))
+        );
+      }
+    }
+
+    // 1. CLUE 1/4 (14.96 – 28.44): FIRST-PERSON MANUAL FOCUS CHASE! ("对焦她的爱，对慢了爱人会失去可爱")
+    function renderMG1_Focus(t) {
+      const lt = t - 14.96, p = clamp(lt / 13.48, 0, 1);
+      const target = 0.68;
+      const focusVal = lt < 8.2
+        ? target + Math.sin(lt * 2.5) * lerp(0.34, 0.01, ease(lt / 8.2))
+        : target;
+      const blurPx = lt < 8.2 ? Math.abs(focusVal - target) * 28 : 0;
+      const locked = lt >= 8.2;
+
+      drawBgPlate(IMGS.s02, lerp(1.04, 1.11, p), Math.round(lerp(18, -18, p)), 0, 0.12, blurPx);
+      ctx.save();
+      if (blurPx > 0.5) ctx.filter = `blur(${(blurPx * 0.7).toFixed(1)}px)`;
+      drawMuseFigure(W / 2 + Math.round(lerp(-30, 85, p)), 760, 8.2, t, 1);
+      ctx.restore();
+
+      const cd = Math.max(0, 8.2 - lt);
+      drawSLRViewfinder(t, focusVal, target, locked,
+        locked ? "✓ 线索 1/4 获取！拍下她回眸的瞬间！" : "⚠ 目标即将转身离开！快拧焦距环对准绿区！",
+        locked ? null : cd
+      );
+
+      if (lt >= 8.5) {
+        const pp = easeOut(clamp((lt - 8.5) / 0.55, 0, 1));
+        drawPhotoPolaroid(lerp(1680, 1500, pp), lerp(940, 470, pp), 360, 405, IMGS.s02,
+          "🔍 线索①：她手里握着旧雨伞", "差 0.1 秒就错过了 · 前往骑楼雨巷!", -0.05, pp, clamp((lt - 8.5) / 1.2, 0, 1));
+      }
+      drawShutterFlash(t, 23.2);
+    }
+
+    // 2. CLUE 2/4 (28.44 – 40.64): RAINY ALLEY SEARCHLIGHT INVESTIGATION! ("记低这感慨，世事变有没有将你掩盖")
+    function renderMG2_DustWipe(t) {
+      const lt = t - 28.44, p = clamp(lt / 12.20, 0, 1);
+      drawBgPlate(IMGS.s03, lerp(1.03, 1.10, p), Math.round(lerp(-18, 18, p)), 0, 0.22);
+
+      const notes = [
+        { x: 460,  y: 350, wipeT: 2.0, dust: "被雨水模糊的角落", mem: "☂ 发现证物：她遗落的旧雨伞！" },
+        { x: 1420, y: 370, wipeT: 4.5, dust: "蒙尘的老街墙面", mem: "📍 2016 刻痕：曾在这里一起躲雨" },
+        { x: 520,  y: 650, wipeT: 7.0, dust: "泛黄的旧车票",   mem: "🎫 背面字迹：18:00 落日天桥" },
+        { x: 1380, y: 640, wipeT: 9.2, dust: "最后一层迷雾",   mem: "🔍 线索②解锁：快赶往落日天桥!" }
+      ];
+      const curIdx = lt < 2.0 ? 0 : lt < 4.5 ? 1 : lt < 7.0 ? 2 : 3;
+      const prevPt = curIdx === 0 ? { x: W / 2, y: H / 2 } : notes[curIdx - 1];
+      const curX = Math.round(lerp(prevPt.x, notes[curIdx].x, easeOut(clamp((lt % 2.5) / 1.4, 0, 1))));
+      const curY = Math.round(lerp(prevPt.y, notes[curIdx].y, easeOut(clamp((lt % 2.5) / 1.4, 0, 1))));
+
+      // Flashlight spotlight beam effect!
+      ctx.save();
+      const sg = ctx.createRadialGradient(curX, curY, 20, curX, curY, 260);
+      sg.addColorStop(0, "rgba(255, 224, 148, 0.28)");
+      sg.addColorStop(1, "rgba(255, 224, 148, 0)");
+      ctx.fillStyle = sg;
+      ctx.fillRect(curX - 260, curY - 260, 520, 520);
+      ctx.restore();
+
+      notes.forEach(n => {
+        const clean = lt >= n.wipeT;
+        rrect(n.x - 205, n.y - 44, 410, 88, 10);
+        ctx.fillStyle = clean ? "rgba(255, 210, 125, 0.24)" : "rgba(24, 26, 36, 0.90)";
+        ctx.fill();
+        ctx.lineWidth = 2.5; ctx.strokeStyle = clean ? "#ffd27d" : "#6c7284"; ctx.stroke();
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.font = '800 20px "PingFang SC", sans-serif';
+        ctx.fillStyle = clean ? "#fff8ee" : "#9aa0ae";
+        ctx.fillText(clean ? n.mem : `🔦 扫描中：${n.dust}`, n.x, n.y);
+        if (clean) drawPixelBurst(n.x, n.y, clamp((lt - n.wipeT) / 0.8, 0, 1), "#ffd27d", "#8ce8ff");
+      });
+
+      ctx.save();
+      ctx.strokeStyle = "#ffd27d"; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(curX, curY, 36, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
+
+    // 3. CLUE 3/4 (40.64 – 57.17): SUNSET OVERPASS — HEARTBEAT 3-CHOICE FATE! ("只一格经典的偶遇已不再")
+    function renderMG3_Choice(t) {
+      const lt = t - 40.64, p = clamp(lt / 16.53, 0, 1);
+      drawBgPlate(IMGS.s04, lerp(1.03, 1.11, p), Math.round(lerp(24, -24, p)), 0, 0.14);
+      drawDustMotes(t, 56, 40, 0.88);
+
+      if (lt < 9.2) {
+        const sel = lt < 3.0 ? 0 : lt < 5.8 ? 1 : 2;
+        drawRPGDialog(
+          "⚡ 命运分支 · 18:00 落日天桥人潮擦肩！",
+          "就在人群另一端，你终于看见了她！但风声太大、红灯只剩 3 秒——",
+          "（做出你的选择，决定这段故事的走向！）",
+          [
+            "[A] 大声喊出她的名字（风太喧嚣，声音被淹没…）",
+            "[B] 硬挤人潮冲过去（绿灯熄灭，眼看又要走散…）",
+            "[C] 举起相机按下快门，用闪光灯让她回头看见你！"
+          ],
+          sel, 1
+        );
+      } else {
+        const pp = easeOut(clamp((lt - 9.2) / 0.6, 0, 1));
+        drawPhotoPolaroid(W / 2, H / 2 - 40, 460, 500, IMGS.s04,
+          "🔍 线索③：闪光灯里她认出了你！", "她比出手势：去维港看日落！", 0.03, pp, clamp((lt - 9.2) / 1.1, 0, 1));
+      }
+      drawShutterFlash(t, 49.84);
+    }
+
+    // 4. CLUE 4/4 (57.17 – 70.62): CHORUS 1 — 2×2 MEMORY RECOVERY COLLAGE! ("留住温度速度温柔和愤怒")
+    function renderMG4_QuadCollage(t) {
+      const lt = t - 57.17;
+      drawBgPlate(IMGS.s05, 1.06, 0, 0, 0.34);
+      drawDustMotes(t, 76, 90, 0.92);
+
+      const cards = [
+        { s: 0.4,  cx: 600,  cy: 335, rot: -0.05, img: IMGS.s05, cap: "🔥 第一次牵手的温度", tag: "记忆恢复 25% · 维港日落" },
+        { s: 3.4,  cx: 1320, cy: 335, rot:  0.04, img: IMGS.s06, cap: "⚡ 一起赶末班车的速度", tag: "记忆恢复 50% · 霓虹流光" },
+        { s: 6.4,  cx: 600,  cy: 710, rot:  0.04, img: IMGS.s07, cap: "💛 吵架后递来的温柔", tag: "记忆恢复 75% · 午后梧桐" },
+        { s: 9.2,  cx: 1320, cy: 710, rot: -0.04, img: IMGS.s16, cap: "🔴 不肯认输的愤怒", tag: "🔍 线索 4/4 全部集齐！" }
+      ];
+      cards.forEach(c => {
+        if (lt >= c.s) {
+          const u = easeOut(clamp((lt - c.s) / 0.45, 0, 1));
+          drawPhotoPolaroid(c.cx, lerp(c.cy + 110, c.cy, u), 365, 330, c.img, c.cap, c.tag, c.rot, u, clamp((lt - c.s) / 0.7, 0, 1));
+        }
+        drawShutterFlash(t, 57.17 + c.s, 0.45);
+      });
+    }
+
+    // 5. FIRST PLOT TWIST (70.62 – 85.87): ROOFTOP BULB LIGHT-PAINTING — CONNECTING THE 4 CLUES!
+    function renderMG5_LightPaint(t) {
+      const lt = t - 70.62, p = clamp(lt / 15.25, 0, 1);
+      drawBgPlate(IMGS.s06, lerp(1.03, 1.13, p), Math.round(lerp(-24, 24, p)), 0, 0.22);
+      drawDustMotes(t, 96, 120, 0.94, "#ffd27d", "#8ce8ff");
+
+      // Long-exposure glowing light ribbon connecting the 4 clue stars!
+      const stars = [
+        { x: 340,  y: 620, lbl: "① 叮叮车" },
+        { x: 740,  y: 410, lbl: "② 雨巷伞" },
+        { x: 1180, y: 580, lbl: "③ 天桥光" },
+        { x: 1580, y: 380, lbl: "④ 维港梦" }
+      ];
+      ctx.save();
+      ctx.lineWidth = 8; ctx.lineCap = "round";
+      const totalSegs = 3;
+      const prog = clamp(lt / 8.5, 0, 1) * totalSegs;
+      for (let i = 0; i < totalSegs; i++) {
+        const u = clamp(prog - i, 0, 1);
+        if (u <= 0) continue;
+        const a = stars[i], b = stars[i + 1];
+        ctx.strokeStyle = i % 2 === 0 ? "rgba(255, 210, 125, 0.90)" : "rgba(140, 232, 255, 0.90)";
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(lerp(a.x, b.x, u), lerp(a.y, b.y, u)); ctx.stroke();
+      }
+      stars.forEach((st, i) => {
+        const lit = prog >= i;
+        ctx.fillStyle = lit ? "#ffd27d" : "rgba(255,255,255,0.35)";
+        ctx.beginPath(); ctx.arc(st.x, st.y, lit ? 14 : 8, 0, Math.PI * 2); ctx.fill();
+        ctx.textAlign = "center"; ctx.font = '800 20px "PingFang SC", sans-serif';
+        ctx.fillStyle = lit ? "#ffffff" : "#9aa0ae";
+        ctx.fillText(st.lbl, st.x, st.y - 28);
+      });
+      ctx.restore();
+
+      // Plot twist revelation banner once all 4 clues connect!
+      if (lt >= 7.8) {
+        const ta = easeOut(clamp((lt - 7.8) / 0.6, 0, 1));
+        ctx.save(); ctx.globalAlpha = ta;
+        rrect(W / 2 - 440, 155, 880, 124, 14);
+        ctx.fillStyle = "rgba(14, 11, 20, 0.92)"; ctx.fill();
+        ctx.lineWidth = 2.5; ctx.strokeStyle = "#ffd27d"; ctx.stroke();
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.font = '800 22px "DIN Alternate", "PingFang SC", sans-serif'; ctx.fillStyle = "#8ce8ff";
+        ctx.fillText("✨ 线索拼合 · 第一层真相揭晓", W / 2, 194);
+        ctx.font = '800 28px "PingFang SC", sans-serif'; ctx.fillStyle = "#ffd27d";
+        ctx.fillText("「原来失踪的不是她，而是被忙碌偷走的我们自己。」", W / 2, 242);
+        ctx.restore();
+      }
+    }
+
+    // 6. MINI-GAME 06 (85.87 – 105.45): STREET & FERRY PHOTO-WALK! ("每张都罕有 / 光圈爱漫游")
+    function renderMG6_PhotoWalk(t) {
+      const lt = t - 85.87;
+      const inFerry = lt >= 9.6;
+      const img = inFerry ? IMGS.s19 : IMGS.s07;
+      const subP = clamp((inFerry ? lt - 9.6 : lt) / 9.8, 0, 1);
+      drawBgPlate(img, lerp(1.03, 1.11, subP), Math.round(lerp(30, -35, subP)), 0, 0.12);
+      drawDustMotes(t, 64, 70, 0.88);
+
+      // Viewfinder scanning frame moving across street/harbor snapping rare candid shots!
+      const fx = Math.round(lerp(460, 1420, subP));
+      const fy = Math.round(480 + Math.sin(t * 2.8) * 65);
+      const locked = subP > 0.55;
+      ctx.save();
+      ctx.strokeStyle = locked ? "#68f29c" : "#ffd27d"; ctx.lineWidth = 4;
+      ctx.strokeRect(fx - 130, fy - 95, 260, 190);
+      ctx.restore();
+
+      if (inFerry) {
+        drawPhotoPolaroid(1500, 460, 340, 380, IMGS.s19, "光圈爱漫游 · 维港波光", "EXP #16 · 天星小轮", 0.05, easeOut(clamp((lt - 10.2) / 0.5, 0, 1)));
+      } else {
+        drawPhotoPolaroid(1500, 460, 340, 380, IMGS.s07, "每张都罕有 · 好过拥有", "EXP #14 · 梧桐老街", -0.05, easeOut(clamp((lt - 1.5) / 0.5, 0, 1)));
+      }
+      drawShutterFlash(t, 92.0, 0.5);
+      drawShutterFlash(t, 101.2, 0.5);
+    }
+
+    // 7. MINI-GAME 07 (105.45 – 128.19): FILM SOLD-OUT COMEDY & POCKET RUMMAGE! ("虽则那即影即有售罄，菲林都已拆走")
+    function renderMG7_SoldOut(t) {
+      const lt = t - 105.45;
+      const reloaded = lt >= 14.2;
+      drawBgPlate(reloaded ? IMGS.s20 : IMGS.s08, 1.04, Math.round(lerp(-14, 14, clamp(lt / 22.7, 0, 1))), 0, 0.18);
+      drawDustMotes(t, 44, 24, 0.84);
+
+      if (!reloaded) {
+        // Hilarious & relatable RPG shop dialogue + rummaging through pocket!
+        if (lt < 6.5) {
+          drawRPGDialog(
+            "🏪 深夜旧相馆老板",
+            "「不好意思啊靓仔，即影即有相纸早就售罄啦，35mm 菲林架也拆走咯！」",
+            "（你的胶卷计数器显示：00 / 36  —— 难道今天只能空手而归？）",
+            null, 0, 1
+          );
+        } else {
+          // 6-slot Pocket Rummage Box!
+          const bx = 420, by = 220, bw = 1080, bh = 500;
+          rrect(bx, by, bw, bh, 14);
+          ctx.fillStyle = "rgba(14, 12, 20, 0.94)"; ctx.fill();
+          ctx.lineWidth = 2.5; ctx.strokeStyle = "#ffd27d"; ctx.stroke();
+          ctx.textAlign = "left"; ctx.textBaseline = "middle";
+          ctx.font = '800 25px "PingFang SC", sans-serif'; ctx.fillStyle = "#ffd27d";
+          ctx.fillText(`🎒 翻遍 ${PLAYER_NAME} 的旧外套口袋……`, bx + 36, by + 48);
+
+          const items = [
+            ["🎫 过期叮叮车票", "没用"], ["🎧 打结的旧耳机", "没用"], ["🪙 两枚五毛硬币", "买不到"],
+            ["🧾 皱巴巴小票", "没用"],   ["🍬 融化的水果糖", "没用"], ["🎞 压箱底·过期菲林!", "✨ 找到了!!"]
+          ];
+          const found = lt >= 11.2;
+          items.forEach(([nm, st], i) => {
+            const sx = bx + 36 + (i % 3) * 344, sy = by + 96 + Math.floor(i / 3) * 162;
+            const isWin = i === 5 && found;
+            rrect(sx, sy, 320, 138, 10);
+            ctx.fillStyle = isWin ? "rgba(104, 242, 156, 0.22)" : "rgba(28, 26, 38, 0.90)"; ctx.fill();
+            ctx.strokeStyle = isWin ? "#68f29c" : "rgba(255,255,255,0.18)"; ctx.lineWidth = isWin ? 3 : 1.5; ctx.stroke();
+            ctx.textAlign = "center";
+            ctx.font = '700 22px "PingFang SC", sans-serif'; ctx.fillStyle = isWin ? "#ffffff" : "#b8b0a8";
+            ctx.fillText(nm, sx + 160, sy + 50);
+            ctx.font = '700 17px "PingFang SC", sans-serif'; ctx.fillStyle = isWin ? "#68f29c" : "#807884";
+            ctx.fillText(isWin ? st : (lt > 6.8 + i * 0.7 ? st : "翻找中…"), sx + 160, sy + 96);
+          });
+        }
+      } else {
+        // Reloaded & bursting out into the glowing vintage cinema night!
+        drawRPGDialog(
+          "⚡ 装备成功 · 冲动用完又再有！",
+          "「管它过没过期——只要心里还有拍照的冲动，镜头里总有丰收！」",
+          "✨ 技能冷却重置 · 36 张黄金胶卷装填完毕，冲向下一幕！",
+          null, 0, 1
+        );
+        drawPixelBurst(W / 2, 340, clamp((lt - 14.2) / 1.2, 0, 1), "#ffd27d", "#68f29c");
+      }
+      drawShutterFlash(t, 119.65, 0.6);
+    }
+
+    // 8. MINI-GAME 08 (128.19 – 141.61): CHORUS 2 — FIREWORKS RHYTHM SHUTTER! ("留住温度速度温柔和愤怒")
+    function renderMG8_FireworksRhythm(t) {
+      const lt = t - 128.19, p = clamp(lt / 13.42, 0, 1);
+      drawBgPlate(IMGS.s09, lerp(1.03, 1.13, p), Math.round(lerp(24, -24, p)), 0, 0.14);
+
+      // 4 Rhythm Target Rings blooming on the fireworks!
+      const beats = [
+        { x: 520,  y: 360, hitT: 2.2, lbl: "PERFECT! 温度" },
+        { x: 960,  y: 280, hitT: 5.2, lbl: "PERFECT! 速度" },
+        { x: 1400, y: 360, hitT: 8.2, lbl: "PERFECT! 温柔" },
+        { x: 960,  y: 480, hitT: 10.8, lbl: "PERFECT! 凝住今日" }
+      ];
+      beats.forEach(b => {
+        const dt = b.hitT - lt;
+        if (dt > 0 && dt < 2.2) {
+          // Shrinking rhythm ring!
+          const r = Math.round(44 + (dt / 2.2) * 110);
+          ctx.strokeStyle = "#ffd27d"; ctx.lineWidth = 4;
+          ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.arc(b.x, b.y, 44, 0, Math.PI * 2); ctx.stroke();
+        } else if (dt <= 0 && dt > -1.4) {
+          const bp = -dt / 1.4;
+          drawPixelBurst(b.x, b.y, bp, "#ffd27d", "#ff9eb5");
+          ctx.save(); ctx.globalAlpha = 1 - bp;
+          ctx.textAlign = "center"; ctx.font = '800 28px "DIN Alternate", "PingFang SC", sans-serif';
+          ctx.fillStyle = "#68f29c";
+          ctx.fillText(`📷 ${b.lbl}`, b.x, b.y - Math.round(bp * 45));
+          ctx.restore();
+        }
+        drawShutterFlash(t, 128.19 + b.hitT, 0.42);
+      });
+    }
+
+    // 9. MINI-GAME 09 (141.61 – 156.84): UNDERTALE-STYLE BULLET-HELL BATTLE! ("停下时光 静止衰老")
+    function renderMG9_TimeBattle(t) {
+      const lt = t - 141.61, p = clamp(lt / 15.23, 0, 1);
+      drawBgPlate(IMGS.s10, lerp(1.03, 1.11, p), 0, 0, 0.28);
+
+      const frozen = lt >= 9.4;
+      // Undertale-style Center Battle Box!
+      const bx = W / 2 - 360, by = 230, bw = 720, bh = 420;
+      rrect(bx, by, bw, bh, 8);
+      ctx.fillStyle = "rgba(10, 8, 16, 0.90)"; ctx.fill();
+      ctx.lineWidth = 4; ctx.strokeStyle = frozen ? "#8ce8ff" : "#ffffff"; ctx.stroke();
+
+      // Player camera-soul dodging inside the battle box!
+      const sx = Math.round(W / 2 + Math.cos(lt * 3.1) * 190);
+      const sy = Math.round(by + bh / 2 + Math.sin(lt * 4.3) * 110);
+      ctx.fillStyle = frozen ? "#68f29c" : "#ffd27d";
+      ctx.fillRect(sx - 18, sy - 14, 36, 28);
+      ctx.fillStyle = "#16121a"; ctx.fillRect(sx - 8, sy - 6, 16, 12);
+      ctx.fillStyle = "#8ce8ff"; ctx.fillRect(sx - 4, sy - 2, 8, 4);
+
+      // Flying Aging/Time Bullets ("白发", "皱纹", "褪色", "衰老") that FREEZE at lt=9.4!
+      const words = ["白发", "皱纹", "褪色", "遗忘", "衰老", "流逝"];
+      const tSim = frozen ? 9.4 : lt;
+      for (let i = 0; i < 12; i++) {
+        const ax = bx + 40 + ((i * 113 + tSim * (140 + (i % 3) * 45)) % (bw - 80));
+        const ay = by + 40 + ((i * 79 + tSim * (90 + (i % 4) * 35)) % (bh - 80));
+        rrect(ax - 34, ay - 16, 68, 32, 6);
+        ctx.fillStyle = frozen ? "rgba(140, 232, 255, 0.25)" : "rgba(255, 92, 118, 0.85)";
+        ctx.fill();
+        ctx.strokeStyle = frozen ? "#8ce8ff" : "#ffb8c6"; ctx.lineWidth = 2; ctx.stroke();
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.font = '800 16px "PingFang SC", sans-serif'; ctx.fillStyle = "#ffffff";
+        ctx.fillText(words[i % words.length], ax, ay);
+      }
+
+      // Bottom Battle Action Buttons
+      const btns = ["[ 躲避衰老弹幕 ]", "[ 蓄力快门 " + Math.min(100, Math.round((lt / 9.4) * 100)) + "% ]", "[ ★ 1/4000s 静止时光 ]"];
+      btns.forEach((b, i) => {
+        const rx = bx + i * 246;
+        const active = (i === 2 && frozen) || (i === 1 && !frozen);
+        rrect(rx, by + bh + 22, 228, 52, 8);
+        ctx.fillStyle = active ? "rgba(255, 210, 125, 0.24)" : "rgba(14, 12, 20, 0.90)"; ctx.fill();
+        ctx.strokeStyle = active ? "#ffd27d" : "#807a88"; ctx.lineWidth = 2.5; ctx.stroke();
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.font = '800 18px "PingFang SC", sans-serif'; ctx.fillStyle = active ? "#ffd27d" : "#a8a0b0";
+        ctx.fillText(b, rx + 114, by + bh + 48);
+      });
+      if (frozen) drawPixelBurst(W / 2, by + bh / 2, clamp((lt - 9.4) / 1.2, 0, 1), "#8ce8ff", "#ffd27d");
+      drawShutterFlash(t, 151.0, 0.72);
+    }
+
+    // 10. MINI-GAME 10 (156.84 – 181.00): 7-PAGE LIFE PHOTO ALBUM FLIP! ("登高峰一秒... 成为父母的一秒")
+    function renderMG10_LifeAlbum(t) {
+      const lt = t - 156.84;
+      const milestones = [
+        { s: 0.0,  e: 3.8,  img: IMGS.s11, yr: "2021 · 登高峰一秒",     sub: "千辛万苦站上雪山之巅，云海就在脚下" },
+        { s: 3.8,  e: 6.6,  img: IMGS.s11, yr: "2022 · 得奖破纪录一秒", sub: "高举奖杯的那一刻，所有熬夜都值得" },
+        { s: 6.6,  e: 9.9,  img: IMGS.s12, yr: "2023 · 港湾晚灯",       sub: "维港万家灯火亮起，总有一盏为你而留" },
+        { s: 9.9,  e: 13.3, img: IMGS.s12, yr: "2024 · 山顶破晓",       sub: "摘下怀念记住美妙，迎接第一缕晨光" },
+        { s: 13.3, e: 16.7, img: IMGS.s13, yr: "2025 · 升职那刻",       sub: "一路打怪升级，终于独当一面" },
+        { s: 16.7, e: 20.1, img: IMGS.s13, yr: "2026 · 新婚那朝",       sub: "蔷薇花开，牵起那个一起看风景的人" },
+        { s: 20.1, e: 24.5, img: IMGS.s13, yr: "2027 · 成为父母的一秒", sub: "要拍照的事可不少，欢迎来到这人间" }
+      ];
+      let cur = milestones[0], idx = 0;
+      for (let i = 0; i < milestones.length; i++) {
+        if (lt >= milestones[i].s && lt < milestones[i].e) { cur = milestones[i]; idx = i; break; }
+      }
+      const lp = clamp((lt - cur.s) / (cur.e - cur.s), 0, 1);
+      drawBgPlate(cur.img, lerp(1.03, 1.12, lp), 0, 0, 0.24);
+
+      // Open Leather Photo Album Spread!
+      const ax = 260, ay = 135, aw = 1400, ah = 740;
+      rrect(ax, ay, aw, ah, 16);
+      ctx.fillStyle = "#2b201c"; ctx.fill();
+      ctx.strokeStyle = "#d8a866"; ctx.lineWidth = 4; ctx.stroke();
+      // Left & Right Cream Album Pages
+      ctx.fillStyle = "#f4ecdc";
+      ctx.fillRect(ax + 24, ay + 24, aw / 2 - 32, ah - 48);
+      ctx.fillRect(ax + aw / 2 + 8, ay + 24, aw / 2 - 32, ah - 48);
+      // Spine shadow
+      ctx.fillStyle = "rgba(0,0,0,0.22)";
+      ctx.fillRect(ax + aw / 2 - 8, ay + 24, 16, ah - 48);
+
+      // Left page: Previous memory thumbnail + Life Timeline Checklist
+      ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      ctx.font = '800 26px "PingFang SC", sans-serif'; ctx.fillStyle = "#3a2820";
+      ctx.fillText(`📖 ${PLAYER_NAME}的人生沙龙相簿`, ax + 64, ay + 82);
+      milestones.forEach((m, i) => {
+        const done = i <= idx;
+        ctx.font = i === idx ? '800 22px "PingFang SC", sans-serif' : '600 19px "PingFang SC", sans-serif';
+        ctx.fillStyle = i === idx ? "#c85832" : done ? "#544238" : "#b8ab9a";
+        ctx.fillText(`${done ? "☑" : "☐"}  ${m.yr}`, ax + 68, ay + 165 + i * 74);
+      });
+
+      // Right page: Current Milestone Real Photo Polaroid popping in!
+      const pop = easeOut(clamp(lp / 0.25, 0, 1));
+      drawPhotoPolaroid(ax + aw * 0.75, ay + ah / 2 - 10, 520, 560, cur.img, cur.yr, cur.sub, lerp(0.14, -0.02, pop), pop);
+      drawShutterFlash(t, 156.84 + cur.s, 0.55);
+    }
+
+    // 11. MINI-GAME 11 (181.00 – 200.90): HANDS-ON RED DARKROOM DEVELOPING! (Actual Scene Thumbnails Developing!)
+    function renderMG11_Darkroom(t) {
+      const lt = t - 181.0, p = clamp(lt / 19.9, 0, 1);
+      drawBgPlate(IMGS.s14, lerp(1.06, 1.01, ease(p)), 0, 0, 0.28);
+      drawDustMotes(t, 36, 16, 0.72, "#ff7676", "#ffd27d");
+
+      // Header instruction
+      rrect(W / 2 - 390, 108, 780, 62, 10);
+      ctx.fillStyle = "rgba(28, 10, 14, 0.90)"; ctx.fill();
+      ctx.strokeStyle = "#ff8278"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.font = '800 23px "PingFang SC", sans-serif'; ctx.fillStyle = "#ffd27d";
+      ctx.fillText("🔴 红灯暗房显影中 · 轻轻摇晃显影盘，看回忆慢慢浮现……", W / 2, 139);
+
+      // 6 REAL Photo Polaroids Hanging & Developing on the Darkroom Line (0% -> 100% actual image reveal!)
+      const linePics = [
+        { s: 1.0,  x: 420,  y: 380, img: IMGS.s02, cap: "夕阳叮叮车",   rot: -0.05 },
+        { s: 3.4,  x: 960,  y: 380, img: IMGS.s05, cap: "维港晚霞",     rot:  0.03 },
+        { s: 5.8,  x: 1500, y: 380, img: IMGS.s09, cap: "烟火摩天轮",   rot: -0.04 },
+        { s: 8.2,  x: 420,  y: 740, img: IMGS.s11, cap: "登高峰一秒",   rot:  0.04 },
+        { s: 10.6, x: 960,  y: 740, img: IMGS.s12, cap: "太平山顶破晓", rot: -0.03 },
+        { s: 13.0, x: 1500, y: 740, img: IMGS.s13, cap: "新婚与新生",   rot:  0.05 }
+      ];
+      // Hanging clothesline
+      ctx.strokeStyle = "rgba(255, 210, 125, 0.45)"; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(180, 225); ctx.lineTo(1740, 225); ctx.moveTo(180, 585); ctx.lineTo(1740, 585); ctx.stroke();
+
+      linePics.forEach(lp => {
+        const dev = clamp((lt - lp.s) / 2.6, 0, 1);
+        const sway = Math.sin(t * 2.2 + lp.x) * 0.025;
+        drawPhotoPolaroid(lp.x, lp.y, 330, 300, lp.img, dev > 0.35 ? lp.cap : "显影中…",
+          dev >= 0.98 ? "✓ 显影完成" : `${Math.round(dev * 100)}%`, lp.rot + sway, 1, dev);
+      });
+    }
+
+    // 12. MINI-GAME 12 (200.90 – 214.06): ART QUARTET PUZZLE! ("音乐 话剧 诗词和舞蹈，揉合生命千样好")
+    function renderMG12_ArtPuzzle(t) {
+      const lt = t - 200.90, p = clamp(lt / 13.16, 0, 1);
+      drawBgPlate(IMGS.s15, lerp(1.03, 1.12, p), 0, 0, 0.16);
+      drawDustMotes(t, 88, 60, 0.94);
+
+      const arts = [
+        { s: 0.6,  cx: 480,  cy: 470, icon: "🎵", name: "音乐", col: "#ffd27d" },
+        { s: 2.8,  cx: 800,  cy: 470, icon: "🎭", name: "话剧", col: "#ff9eb5" },
+        { s: 5.0,  cx: 1120, cy: 470, icon: "📜", name: "诗词", col: "#8ce8ff" },
+        { s: 7.2,  cx: 1440, cy: 470, icon: "💃", name: "舞蹈", col: "#68f29c" }
+      ];
+      arts.forEach(a => {
+        const locked = lt >= a.s;
+        const u = easeOut(clamp((lt - a.s) / 0.5, 0, 1));
+        const y = locked ? a.cy : a.cy - 140;
+        ctx.save(); ctx.globalAlpha = locked ? u : 0.35;
+        rrect(a.cx - 125, y - 125, 250, 250, 16);
+        ctx.fillStyle = locked ? "rgba(18, 12, 26, 0.90)" : "rgba(18, 12, 26, 0.45)"; ctx.fill();
+        ctx.lineWidth = 3; ctx.strokeStyle = a.col; ctx.stroke();
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.font = '800 68px "PingFang SC", sans-serif'; ctx.fillText(a.icon, a.cx, y - 24);
+        ctx.font = '800 32px "PingFang SC", sans-serif'; ctx.fillStyle = a.col;
+        ctx.fillText(a.name, a.cx, y + 66);
+        ctx.restore();
+        if (locked) drawPixelBurst(a.cx, a.cy, clamp((lt - a.s) / 0.9, 0, 1), a.col, "#ffffff");
+      });
+    }
+
+    // 13. MINI-GAME 13 (214.06 – 233.62): STORM TO GOLDEN COAST CO-OP FINALE! ("游乐人间活得好 / 拍着照片一路同步")
+    function renderMG13_StormToCoast(t) {
+      const lt = t - 214.06;
+      const inCoast = lt >= 11.84;
+      const subP = clamp((inCoast ? lt - 11.84 : lt) / (inCoast ? 7.72 : 11.84), 0, 1);
+      drawBgPlate(inCoast ? IMGS.s17 : IMGS.s16, lerp(1.03, 1.12, subP), Math.round(lerp(28, -28, subP)), 0, 0.14);
+      drawDustMotes(t, 88, inCoast ? 90 : 180, 0.94, "#ffd27d", "#8ce8ff");
+
+      const px = Math.round(lerp(360, 1360, ease(subP)));
+      drawPixelPhotographer(px, 825, 7.0, t, "run", 1);
+      if (inCoast) {
+        drawMuseFigure(px + 135, 825, 6.8, t, 1);
+        drawPhotoPolaroid(1500, 440, 360, 380, IMGS.s17, "36/36 · 一路同步达成!", "FINAL SHOT · 黄金海岸", 0.04, 1);
+      } else {
+        drawSLRViewfinder(t, 0.5, 0.5, true, "⚡ 稳住取景框 · 游乐人间活得好谈何容易");
+      }
+      drawShutterFlash(t, 232.6, 0.55);
+    }
+
+    // 14. TRUE ENDING (233.62 – 272.00): REAL SALON EXHIBITION GALLERY (All Captured Photos Framed on Wall!)
+    function renderFinale_SalonGallery(t) {
+      const lt = t - 233.62, p = clamp(lt / 38.38, 0, 1);
+      drawBgPlate(IMGS.s18, lerp(1.07, 1.01, ease(p)), Math.round(lerp(-16, 16, p)), 0, 0.16);
+      drawDustMotes(t, 130, 22, 0.96, "#ffd98a", "#ffffff");
+
+      if (t < 253.0) {
+        const wa = clamp((253.0 - t) / 1.0, 0, 1);
+        // 5 Framed Gallery Memories glowing across the Salon wall!
+        const wall = [
+          { x: 340,  img: IMGS.s02, cap: "初见回眸" },
+          { x: 650,  img: IMGS.s05, cap: "维港温度" },
+          { x: 960,  img: IMGS.s11, cap: "登顶破晓" },
+          { x: 1270, img: IMGS.s13, cap: "新婚新生" },
+          { x: 1580, img: IMGS.s17, cap: "一路同步" }
+        ];
+        wall.forEach((w, i) => {
+          const a = wa * easeOut(clamp((lt - i * 0.45) / 0.7, 0, 1));
+          drawPhotoPolaroid(w.x, 420 + (i % 2 === 0 ? -18 : 18), 260, 290, w.img, w.cap, `SALON #0${i + 1}`, 0, a);
+        });
+        const px = Math.round(lerp(420, 960, ease(clamp(lt / 16, 0, 1))));
+        drawPixelPhotographer(px, 865, 7.2, t, lt < 14 ? "walk" : "idle", wa);
+      }
+
+      if (t >= 253.0) {
+        const ga = easeOut(clamp((t - 253.0) / 1.0, 0, 1)) * clamp((271.5 - t) / 1.8, 0, 1);
+        ctx.save(); ctx.globalAlpha = ga;
+        rrect(W / 2 - 440, 245, 880, 440, 16);
+        ctx.fillStyle = "rgba(14, 11, 16, 0.93)"; ctx.fill();
+        ctx.lineWidth = 2.5; ctx.strokeStyle = "#ffd27d"; ctx.stroke();
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.font = '700 20px "DIN Alternate", "PingFang SC", sans-serif'; ctx.fillStyle = "#8ce8ff";
+        ctx.fillText("GALLERY COMPLETE · 沙龙人生摄影展", W / 2, 304);
+        ctx.font = '800 56px "PingFang SC", sans-serif'; ctx.fillStyle = "#ffd27d";
+        ctx.fillText("沙   龙", W / 2, 376);
+        ctx.font = '700 24px "PingFang SC", sans-serif'; ctx.fillStyle = "#faf5ec";
+        ctx.fillText(`首席摄影师：${PLAYER_NAME}   ·   人生胶卷：36 / 36 (ALL CLEAR)`, W / 2, 458);
+        ctx.fillText("13 种互动微游戏 · 全部显影归档", W / 2, 512);
+        ctx.fillStyle = "#ffd27d";
+        ctx.fillText("「其实人生并非虚耗，何来尘埃飞舞」", W / 2, 594);
+        ctx.restore();
+      }
+      if (t > 269.5) {
+        ctx.fillStyle = `rgba(10, 8, 12, ${clamp((t - 269.5) / 2.2, 0, 1)})`;
+        ctx.fillRect(0, 0, W, H);
+      }
+    }
+
+    // ── Master Seamless 14-Mini-Game Timeline (Zero Black Cuts!) ──
+    const STAGES = [
+      { start: 0.00,   end: 14.96,  trans: "leak",  fn: renderIntro },
+      { start: 14.96,  end: 28.44,  trans: "slide", fn: renderMG1_Focus },
+      { start: 28.44,  end: 40.64,  trans: "slide", fn: renderMG2_DustWipe },
+      { start: 40.64,  end: 57.17,  trans: "flash", fn: renderMG3_Choice },
+      { start: 57.17,  end: 70.62,  trans: "slide", fn: renderMG4_QuadCollage },
+      { start: 70.62,  end: 85.87,  trans: "leak",  fn: renderMG5_LightPaint },
+      { start: 85.87,  end: 105.45, trans: "slide", fn: renderMG6_PhotoWalk },
+      { start: 105.45, end: 128.19, trans: "flash", fn: renderMG7_SoldOut },
+      { start: 128.19, end: 141.61, trans: "slide", fn: renderMG8_FireworksRhythm },
+      { start: 141.61, end: 156.84, trans: "flash", fn: renderMG9_TimeBattle },
+      { start: 156.84, end: 181.00, trans: "leak",  fn: renderMG10_LifeAlbum },
+      { start: 181.00, end: 200.90, trans: "leak",  fn: renderMG11_Darkroom },
+      { start: 200.90, end: 214.06, trans: "slide", fn: renderMG12_ArtPuzzle },
+      { start: 214.06, end: 233.62, trans: "leak",  fn: renderMG13_StormToCoast },
+      { start: 233.62, end: 272.50, trans: "leak",  fn: renderFinale_SalonGallery }
+    ];
+
+    window.renderAt = function (t) {
+      ctx.fillStyle = "#0c0a0e";
+      ctx.fillRect(0, 0, W, H);
+
+      let idx = STAGES.length - 1;
+      for (let i = 0; i < STAGES.length; i++) {
+        if (t < STAGES[i].end) { idx = i; break; }
+      }
+      const cur = STAGES[idx];
+      const next = idx + 1 < STAGES.length ? STAGES[idx + 1] : null;
+      const transDur = cur.trans === "flash" ? 0.34 : 0.90;
+      const timeLeft = cur.end - t;
+
+      if (next && timeLeft < transDur && timeLeft > 0) {
+        const u = ease(clamp(1 - timeLeft / transDur, 0, 1));
+        if (cur.trans === "slide") {
+          // Ultra-Smooth Cinematic Zoom-Pan Crossfade (Live motion on BOTH layers, zero hard seam!)
+          ctx.save();
+          const s1 = lerp(1.0, 1.07, u);
+          ctx.translate(W / 2 - Math.round(u * 90), H / 2); ctx.scale(s1, s1); ctx.translate(-W / 2, -H / 2);
+          ctx.globalAlpha = 1 - u;
+          cur.fn(t);
+          ctx.restore();
+
+          ctx.save();
+          const s2 = lerp(1.05, 1.0, u);
+          ctx.translate(W / 2 + Math.round((1 - u) * 90), H / 2); ctx.scale(s2, s2); ctx.translate(-W / 2, -H / 2);
+          ctx.globalAlpha = u;
+          next.fn(t);
+          ctx.restore();
+
+          // Soft warm film light-veil unifying the camera move
+          const g = ctx.createRadialGradient(W * lerp(0.8, 0.2, u), H * 0.5, 40, W * 0.5, H * 0.5, W * 0.7);
+          const a = Math.sin(u * Math.PI) * 0.26;
+          g.addColorStop(0, `rgba(255, 226, 166, ${a})`);
+          g.addColorStop(1, "rgba(255, 210, 125, 0)");
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, W, H);
+        } else if (cur.trans === "leak") {
+          // Silky Film Light-Leak Dissolve (Live motion on BOTH layers!)
+          cur.fn(t);
+          ctx.save(); ctx.globalAlpha = u; next.fn(t); ctx.restore();
+          const la = Math.sin(u * Math.PI) * 0.34;
+          const lg = ctx.createRadialGradient(W * 0.5, H * 0.42, 60, W * 0.5, H * 0.5, W * 0.75);
+          lg.addColorStop(0, `rgba(255, 224, 156, ${la})`);
+          lg.addColorStop(1, `rgba(255, 138, 86, ${la * 0.28})`);
+          ctx.fillStyle = lg;
+          ctx.fillRect(0, 0, W, H);
+        } else {
+          // Soft Shutter Glow Dissolve
+          cur.fn(t);
+          ctx.save(); ctx.globalAlpha = u; next.fn(t); ctx.restore();
+          ctx.fillStyle = `rgba(255, 250, 236, ${Math.sin(u * Math.PI) * 0.72})`;
+          ctx.fillRect(0, 0, W, H);
+        }
+      } else {
+        cur.fn(t);
+      }
+
+      drawCompactHUD(t);
+      drawLyrics(t);
+    };
+
+    loadAllAssets().then(() => { window.renderAt(0); });
+  </script>
+</body>
+</html>
